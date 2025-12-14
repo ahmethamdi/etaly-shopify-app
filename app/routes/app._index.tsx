@@ -180,73 +180,82 @@ export default function Dashboard() {
         {/* Main Content */}
         <Layout>
           <Layout.Section>
-            <Card>
-              <BlockStack gap="400">
-                <InlineStack align="space-between">
-                  <Text as="h2" variant="headingMd">
-                    Active Delivery Rules
-                  </Text>
-                  <Button variant="plain">View all</Button>
-                </InlineStack>
+            <BlockStack gap="500">
+              <Card>
+                <BlockStack gap="400">
+                  <InlineStack align="space-between">
+                    <Text as="h2" variant="headingMd">
+                      Active Delivery Rules
+                    </Text>
+                    <Button variant="plain">View all</Button>
+                  </InlineStack>
 
-                {deliveryRules.map((rule) => (
-                  <Box
-                    key={rule.id}
-                    padding="400"
-                    borderColor="border"
-                    borderWidth="025"
-                    borderRadius="200"
-                  >
-                    <BlockStack gap="200">
-                      <InlineStack align="space-between" blockAlign="start">
-                        <BlockStack gap="100">
-                          <InlineStack gap="200" blockAlign="center">
-                            <Text as="h3" variant="headingSm" fontWeight="semibold">
-                              {rule.name}
-                            </Text>
-                            <Badge tone={rule.isActive ? "success" : "info"}>
-                              {rule.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                          </InlineStack>
-                          <Text as="p" variant="bodySm" tone="subdued">
-                            {rule.carrier}
+                  {deliveryRules.map((rule) => (
+                    <InlineStack
+                      key={rule.id}
+                      align="space-between"
+                      blockAlign="start"
+                      wrap={false}
+                    >
+                      <BlockStack gap="100">
+                        <InlineStack gap="200" blockAlign="center">
+                          <Text as="h3" variant="headingSm" fontWeight="semibold">
+                            {rule.name}
                           </Text>
-                        </BlockStack>
+                          <Badge tone={rule.isActive ? "success" : "info"}>
+                            {rule.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </InlineStack>
+                        <Text as="p" variant="bodySm" tone="subdued">
+                          {rule.carrier}
+                        </Text>
+                        <InlineStack gap="400">
+                          <InlineStack gap="100">
+                            <Text as="span" variant="bodySm" tone="subdued">
+                              📍
+                            </Text>
+                            <Text as="span" variant="bodySm">
+                              {rule.location}
+                            </Text>
+                          </InlineStack>
+                          <InlineStack gap="100">
+                            <Text as="span" variant="bodySm" tone="subdued">
+                              ⏱️
+                            </Text>
+                            <Text as="span" variant="bodySm">
+                              {rule.deliveryTime}
+                            </Text>
+                          </InlineStack>
+                          <InlineStack gap="100">
+                            <Text as="span" variant="bodySm" tone="subdued">
+                              ✂️
+                            </Text>
+                            <Text as="span" variant="bodySm">
+                              Cutoff: {rule.cutoffTime}
+                            </Text>
+                          </InlineStack>
+                        </InlineStack>
+                      </BlockStack>
+                      <InlineStack gap="200">
+                        <input
+                          type="checkbox"
+                          checked={rule.isActive}
+                          readOnly
+                          style={{
+                            width: "40px",
+                            height: "20px",
+                            accentColor: rule.isActive ? "#008060" : "#999",
+                          }}
+                        />
                         <Button variant="plain" size="slim">
                           Edit
                         </Button>
                       </InlineStack>
-                      <InlineStack gap="400">
-                        <InlineStack gap="100">
-                          <Text as="span" variant="bodySm" tone="subdued">
-                            📍
-                          </Text>
-                          <Text as="span" variant="bodySm">
-                            {rule.location}
-                          </Text>
-                        </InlineStack>
-                        <InlineStack gap="100">
-                          <Text as="span" variant="bodySm" tone="subdued">
-                            ⏱️
-                          </Text>
-                          <Text as="span" variant="bodySm">
-                            {rule.deliveryTime}
-                          </Text>
-                        </InlineStack>
-                        <InlineStack gap="100">
-                          <Text as="span" variant="bodySm" tone="subdued">
-                            ✂️
-                          </Text>
-                          <Text as="span" variant="bodySm">
-                            Cutoff: {rule.cutoffTime}
-                          </Text>
-                        </InlineStack>
-                      </InlineStack>
-                    </BlockStack>
-                  </Box>
-                ))}
-              </BlockStack>
-            </Card>
+                    </InlineStack>
+                  ))}
+                </BlockStack>
+              </Card>
+            </BlockStack>
           </Layout.Section>
 
           <Layout.Section variant="oneThird">
