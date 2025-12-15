@@ -28,7 +28,7 @@ export default function App() {
     { path: "/app/cart-checkout", label: "Cart & Checkout", icon: "cart" },
     { path: "/app/message-templates", label: "Message Templates", icon: "message" },
     { path: "/app/analytics", label: "Analytics", icon: "chart" },
-    { path: "/app/plans", label: "Plans & Billing", icon: "card" },
+    { path: "/app/plans-billing", label: "Plans & Billing", icon: "card" },
     { path: "/app/settings", label: "Settings", icon: "settings" },
   ];
 
