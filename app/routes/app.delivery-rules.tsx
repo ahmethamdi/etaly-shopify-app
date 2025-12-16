@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { json } from "@remix-run/node";
+import { useLoaderData, useFetcher } from "@remix-run/react";
 import {
   Text,
   TextField,
@@ -8,12 +9,67 @@ import {
   Button,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const { shop } = session;
 
-  // Mock delivery rules data
-  const deliveryRules = [
+  try {
+    // Get or create store
+    let store = await db.store.findUnique({
+      where: { shop },
+      include: {
+        deliveryRules: {
+          orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        },
+      },
+    });
+
+    if (!store) {
+      // Create store if it doesn't exist
+      store = await db.store.create({
+        data: {
+          shop,
+          plan: "free",
+          isActive: true,
+        },
+        include: {
+          deliveryRules: true,
+        },
+      });
+    }
+
+    // Transform data for frontend
+    const deliveryRules = store.deliveryRules.map((rule) => {
+      const countries = JSON.parse(rule.countries);
+      return {
+        id: rule.id,
+        name: rule.name,
+        carrier: rule.carrier || "Not specified",
+        location: countries.join(", "),
+        deliveryTime: `${rule.minDays}-${rule.maxDays} business days`,
+        cutoffTime: rule.cutoffTime || "Not set",
+        isActive: rule.isActive,
+      };
+    });
+
+    return json({
+      shop: session.shop,
+      deliveryRules,
+    });
+  } catch (error) {
+    console.error("Error loading delivery rules:", error);
+    // Return empty array on error
+    return json({
+      shop: session.shop,
+      deliveryRules: [],
+    });
+  }
+};
+
+// Mock delivery rules data for initial display if no rules exist
+const mockRules = [
     {
       id: "1",
       name: "Standard Shipping – Germany",
