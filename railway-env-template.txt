@@ -1,0 +1,17 @@
+# Railway Environment Variables
+# Copy these to Railway dashboard after deployment
+
+# Shopify Credentials (get from Shopify Partners dashboard)
+SHOPIFY_API_KEY=e0143e253cb68f1db0a1037c8cdf1411
+SHOPIFY_API_SECRET=your_api_secret_here
+
+# App Settings
+SCOPES=
+HOST=https://etaly.app
+NODE_ENV=production
+
+# Database (Railway will provide PostgreSQL, or use SQLite for now)
+DATABASE_URL=file:./dev.sqlite
+
+# Session Storage
+SESSION_SECRET=your_random_secret_here_generate_with_openssl_rand_base64_32
