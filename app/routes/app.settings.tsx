@@ -1,25 +1,136 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { useLoaderData, useFetcher } from "@remix-run/react";
 import { Text } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import db from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const { shop } = session;
 
-  return {
-    shop: session.shop,
-  };
+  try {
+    let store = await db.store.findUnique({
+      where: { shop },
+      include: { settings: true },
+    });
+
+    if (!store) {
+      store = await db.store.create({
+        data: { shop, plan: "free", isActive: true },
+        include: { settings: true },
+      });
+    }
+
+    if (!store.settings) {
+      await db.settings.create({
+        data: {
+          storeId: store.id,
+          defaultLanguage: "en",
+          dateFormat: "DD/MM/YYYY",
+          timeFormat: "24",
+          debugMode: false,
+          targetingMode: "all",
+        },
+      });
+      store = await db.store.findUnique({
+        where: { shop },
+        include: { settings: true },
+      });
+    }
+
+    return json({
+      shop: session.shop,
+      store,
+      settings: store?.settings,
+    });
+  } catch (error) {
+    console.error("Error loading settings:", error);
+    return json({ shop: session.shop, store: null, settings: null });
+  }
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const { shop } = session;
+
+  try {
+    const store = await db.store.findUnique({ where: { shop } });
+    if (!store) {
+      return json({ success: false, error: "Store not found" }, { status: 404 });
+    }
+
+    const formData = await request.formData();
+    const updateData: any = {};
+
+    if (formData.has("defaultLanguage")) updateData.defaultLanguage = formData.get("defaultLanguage");
+    if (formData.has("dateFormat")) updateData.dateFormat = formData.get("dateFormat");
+    if (formData.has("timeFormat")) updateData.timeFormat = formData.get("timeFormat");
+    if (formData.has("customCSS")) updateData.customCSS = formData.get("customCSS");
+    if (formData.has("debugMode")) updateData.debugMode = formData.get("debugMode") === "true";
+    if (formData.has("isActive")) {
+      await db.store.update({
+        where: { id: store.id },
+        data: { isActive: formData.get("isActive") === "true" },
+      });
+    }
+
+    let settings = await db.settings.findUnique({ where: { storeId: store.id } });
+
+    if (settings) {
+      settings = await db.settings.update({
+        where: { storeId: store.id },
+        data: updateData,
+      });
+    } else {
+      settings = await db.settings.create({
+        data: { storeId: store.id, ...updateData },
+      });
+    }
+
+    return json({ success: true, settings, message: "Settings saved successfully" });
+  } catch (error) {
+    console.error("Error saving settings:", error);
+    return json({ success: false, error: "Failed to save settings" }, { status: 500 });
+  }
 };
 
 export default function Settings() {
-  const {} = useLoaderData<typeof loader>();
+  const { store, settings } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
 
-  const [appStatus, setAppStatus] = useState(true);
-  const [debugMode, setDebugMode] = useState(false);
-  const [language, setLanguage] = useState("English");
-  const [dateFormat, setDateFormat] = useState("DD/MM/YYYY (14/03/2025)");
-  const [timeFormat, setTimeFormat] = useState("24-hour (14:00)");
+  const [appStatus, setAppStatus] = useState(store?.isActive ?? true);
+  const [debugMode, setDebugMode] = useState(settings?.debugMode ?? false);
+  const [language, setLanguage] = useState(settings?.defaultLanguage ?? "en");
+  const [dateFormat, setDateFormat] = useState(settings?.dateFormat ?? "DD/MM/YYYY");
+  const [timeFormat, setTimeFormat] = useState(settings?.timeFormat ?? "24");
+  const [customCSS, setCustomCSS] = useState(settings?.customCSS ?? "");
+
+  useEffect(() => {
+    if (settings) {
+      setAppStatus(store?.isActive ?? true);
+      setDebugMode(settings.debugMode);
+      setLanguage(settings.defaultLanguage);
+      setDateFormat(settings.dateFormat);
+      setTimeFormat(settings.timeFormat);
+      setCustomCSS(settings.customCSS ?? "");
+    }
+  }, [settings, store]);
+
+  const handleSave = () => {
+    const formData = new FormData();
+    formData.append("isActive", appStatus.toString());
+    formData.append("debugMode", debugMode.toString());
+    formData.append("defaultLanguage", language);
+    formData.append("dateFormat", dateFormat);
+    formData.append("timeFormat", timeFormat);
+    formData.append("customCSS", customCSS);
+
+    fetcher.submit(formData, { method: "post" });
+  };
+
+  const isSaving = fetcher.state === "submitting";
 
   return (
     <div style={{ padding: "24px", background: "#f9fafb", minHeight: "100vh" }}>
@@ -316,6 +427,8 @@ export default function Settings() {
         <textarea
           placeholder="/* Add your custom CSS here */"
           rows={6}
+          value={customCSS}
+          onChange={(e) => setCustomCSS(e.target.value)}
           style={{
             width: "100%",
             padding: "12px",
@@ -606,7 +719,35 @@ export default function Settings() {
 
       {/* Save/Cancel Buttons */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+        {fetcher.data?.success && (
+          <div style={{
+            padding: "12px 16px",
+            background: "#d1fae5",
+            color: "#047857",
+            borderRadius: "8px",
+            marginRight: "auto",
+            fontSize: "14px",
+            fontWeight: "500",
+          }}>
+            ✓ {fetcher.data.message}
+          </div>
+        )}
+        {fetcher.data?.error && (
+          <div style={{
+            padding: "12px 16px",
+            background: "#fee2e2",
+            color: "#dc2626",
+            borderRadius: "8px",
+            marginRight: "auto",
+            fontSize: "14px",
+            fontWeight: "500",
+          }}>
+            ✗ {fetcher.data.error}
+          </div>
+        )}
         <button
+          type="button"
+          onClick={() => window.location.reload()}
           style={{
             padding: "12px 24px",
             borderRadius: "8px",
@@ -621,18 +762,22 @@ export default function Settings() {
           Cancel
         </button>
         <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
           style={{
             padding: "12px 24px",
             borderRadius: "8px",
             border: "none",
-            background: "#2563eb",
+            background: isSaving ? "#9ca3af" : "#2563eb",
             color: "white",
             fontSize: "14px",
             fontWeight: "600",
-            cursor: "pointer",
+            cursor: isSaving ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             gap: "8px",
+            opacity: isSaving ? 0.7 : 1,
           }}
         >
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
@@ -640,7 +785,7 @@ export default function Settings() {
             <polyline points="17 21 17 13 7 13 7 21" />
             <polyline points="7 3 7 8 15 8" />
           </svg>
-          Save Settings
+          {isSaving ? "Saving..." : "Save Settings"}
         </button>
       </div>
     </div>
