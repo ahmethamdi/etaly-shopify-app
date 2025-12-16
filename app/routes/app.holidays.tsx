@@ -1,47 +1,133 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
+import { useLoaderData, useFetcher } from "@remix-run/react";
+import { json } from "@remix-run/node";
 import { Text, Button } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
+import { useState } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const { shop } = session;
 
-  // Mock holiday data
-  const holidays = [
-    {
-      id: "1",
-      name: "New Year's Day",
-      date: "1 January 2025",
-      type: "Public Holiday",
-    },
-    {
-      id: "2",
-      name: "Good Friday",
-      date: "18 April 2025",
-      type: "Public Holiday",
-    },
-    {
-      id: "3",
-      name: "Easter Monday",
-      date: "21 April 2025",
-      type: "Public Holiday",
-    },
-    {
-      id: "4",
-      name: "Labour Day",
-      date: "1 May 2025",
-      type: "Public Holiday",
-    },
-  ];
+  // Find store
+  const store = await db.store.findUnique({
+    where: { shop },
+  });
 
-  return {
+  if (!store) {
+    return json({ shop, holidays: [] });
+  }
+
+  // Fetch holidays from database
+  const holidays = await db.holiday.findMany({
+    where: { storeId: store.id },
+    orderBy: { date: "asc" },
+  });
+
+  // Format holidays for display
+  const formattedHolidays = holidays.map((h) => ({
+    id: h.id,
+    name: h.name,
+    date: new Date(h.date).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+    type: h.isRecurring ? "Recurring Holiday" : "Custom Holiday",
+  }));
+
+  return json({
     shop: session.shop,
-    holidays,
-  };
+    holidays: formattedHolidays,
+  });
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const { shop } = session;
+
+  // Find store
+  const store = await db.store.findUnique({
+    where: { shop },
+  });
+
+  if (!store) {
+    return json({ success: false, error: "Store not found" }, { status: 404 });
+  }
+
+  const formData = await request.formData();
+  const actionType = formData.get("action") as string;
+
+  // DELETE
+  if (actionType === "delete") {
+    const holidayId = formData.get("holidayId") as string;
+    await db.holiday.delete({
+      where: { id: holidayId },
+    });
+    return json({ success: true, message: "Holiday deleted successfully" });
+  }
+
+  // CREATE
+  if (actionType === "create") {
+    const name = formData.get("name") as string;
+    const dateStr = formData.get("date") as string;
+
+    if (!name || !dateStr) {
+      return json({ success: false, error: "Name and date are required" }, { status: 400 });
+    }
+
+    // Parse date (expecting dd.mm.yyyy format)
+    const [day, month, year] = dateStr.split(".");
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+
+    await db.holiday.create({
+      data: {
+        storeId: store.id,
+        name,
+        date,
+        isRecurring: false,
+      },
+    });
+
+    return json({ success: true, message: "Holiday added successfully" });
+  }
+
+  return json({ success: false, error: "Invalid action" }, { status: 400 });
 };
 
 export default function Holidays() {
   const { holidays } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
+  const [customDate, setCustomDate] = useState("");
+  const [customName, setCustomName] = useState("");
+
+  // Handlers
+  const handleDelete = (holidayId: string) => {
+    if (confirm("Are you sure you want to delete this holiday?")) {
+      const formData = new FormData();
+      formData.append("action", "delete");
+      formData.append("holidayId", holidayId);
+      fetcher.submit(formData, { method: "post" });
+    }
+  };
+
+  const handleAdd = () => {
+    if (!customName || !customDate) {
+      alert("Please enter both name and date");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("action", "create");
+    formData.append("name", customName);
+    formData.append("date", customDate);
+    fetcher.submit(formData, { method: "post" });
+
+    // Clear inputs
+    setCustomName("");
+    setCustomDate("");
+  };
 
   // Calendar data for December 2025
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -200,12 +286,13 @@ export default function Holidays() {
               <Text as="p" variant="bodyMd" fontWeight="medium">
                 Custom Holiday Dates
               </Text>
-              <div style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "8px" }}>
                 <input
                   type="text"
-                  placeholder="gg.aa.yyyy"
+                  placeholder="Holiday name"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
                   style={{
-                    flex: 1,
                     padding: "10px 12px",
                     border: "1px solid #d1d5db",
                     borderRadius: "8px",
@@ -213,9 +300,29 @@ export default function Holidays() {
                     outline: "none",
                   }}
                 />
-                <Button variant="primary">
-                  <div style={{ fontSize: "18px", lineHeight: "1" }}>+</div>
-                </Button>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    placeholder="dd.mm.yyyy"
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      outline: "none",
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={handleAdd}
+                    loading={fetcher.state === "submitting"}
+                  >
+                    <div style={{ fontSize: "18px", lineHeight: "1" }}>+</div>
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -262,12 +369,15 @@ export default function Holidays() {
                     </div>
                   </div>
                   <button
+                    onClick={() => handleDelete(holiday.id)}
+                    disabled={fetcher.state === "submitting"}
                     style={{
                       padding: "8px",
                       background: "transparent",
                       border: "none",
-                      cursor: "pointer",
+                      cursor: fetcher.state === "submitting" ? "not-allowed" : "pointer",
                       color: "#6b7280",
+                      opacity: fetcher.state === "submitting" ? 0.5 : 1,
                     }}
                   >
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>

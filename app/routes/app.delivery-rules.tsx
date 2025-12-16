@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { useState } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -65,6 +66,65 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       shop: session.shop,
       deliveryRules: [],
     });
+  }
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const { shop } = session;
+
+  try {
+    const store = await db.store.findUnique({ where: { shop } });
+    if (!store) {
+      return json({ success: false, error: "Store not found" }, { status: 404 });
+    }
+
+    const formData = await request.formData();
+    const actionType = formData.get("action") as string;
+    const ruleId = formData.get("ruleId") as string;
+
+    // TOGGLE ACTIVE/INACTIVE
+    if (actionType === "toggle" && ruleId) {
+      const rule = await db.deliveryRule.findUnique({ where: { id: ruleId } });
+      if (rule) {
+        await db.deliveryRule.update({
+          where: { id: ruleId },
+          data: { isActive: !rule.isActive },
+        });
+        return json({ success: true, message: "Rule status updated" });
+      }
+    }
+
+    // DELETE
+    if (actionType === "delete" && ruleId) {
+      await db.deliveryRule.delete({ where: { id: ruleId } });
+      return json({ success: true, message: "Rule deleted successfully" });
+    }
+
+    // CREATE (Simple version for now)
+    if (actionType === "create") {
+      const name = formData.get("name") as string;
+      const countries = formData.get("countries") as string;
+      const minDays = parseInt(formData.get("minDays") as string);
+      const maxDays = parseInt(formData.get("maxDays") as string);
+
+      await db.deliveryRule.create({
+        data: {
+          storeId: store.id,
+          name: name || "New Rule",
+          countries: JSON.stringify([countries || "US"]),
+          minDays: minDays || 2,
+          maxDays: maxDays || 5,
+          isActive: true,
+        },
+      });
+      return json({ success: true, message: "Rule created successfully" });
+    }
+
+    return json({ success: false, error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("Delivery rules action error:", error);
+    return json({ success: false, error: "Failed to process action" }, { status: 500 });
   }
 };
 
@@ -125,6 +185,37 @@ const mockRules = [
 
 export default function DeliveryRules() {
   const { deliveryRules } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const handleToggle = (ruleId: string) => {
+    const formData = new FormData();
+    formData.append("action", "toggle");
+    formData.append("ruleId", ruleId);
+    fetcher.submit(formData, { method: "post" });
+  };
+
+  const handleDelete = (ruleId: string) => {
+    if (confirm("Are you sure you want to delete this rule?")) {
+      const formData = new FormData();
+      formData.append("action", "delete");
+      formData.append("ruleId", ruleId);
+      fetcher.submit(formData, { method: "post" });
+    }
+  };
+
+  const handleQuickCreate = () => {
+    const name = prompt("Enter rule name:", "New Delivery Rule");
+    if (name) {
+      const formData = new FormData();
+      formData.append("action", "create");
+      formData.append("name", name);
+      formData.append("countries", "US");
+      formData.append("minDays", "2");
+      formData.append("maxDays", "5");
+      fetcher.submit(formData, { method: "post" });
+    }
+  };
 
   return (
     <div style={{ padding: "24px", background: "#f9fafb", minHeight: "100vh" }}>
@@ -139,7 +230,7 @@ export default function DeliveryRules() {
               Manage your delivery estimations and cutoff times
             </Text>
           </div>
-          <Button variant="primary">
+          <Button variant="primary" onClick={handleQuickCreate} loading={fetcher.state === "submitting"}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "18px", lineHeight: "1" }}>+</span>
               <span>Create Rule</span>
@@ -359,16 +450,20 @@ export default function DeliveryRules() {
 
                 {/* Delete Button */}
                 <button
+                  onClick={() => handleDelete(rule.id)}
+                  disabled={fetcher.state === "submitting"}
                   style={{
                     padding: "8px 12px",
                     background: "transparent",
                     border: "none",
-                    cursor: "pointer",
-                    color: "#6b7280",
+                    cursor: fetcher.state === "submitting" ? "not-allowed" : "pointer",
+                    color: "#dc2626",
                     display: "flex",
                     alignItems: "center",
                     gap: "4px",
+                    opacity: fetcher.state === "submitting" ? 0.5 : 1,
                   }}
+                  title="Delete rule"
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
                     <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -376,7 +471,10 @@ export default function DeliveryRules() {
                 </button>
 
                 {/* Toggle Switch */}
-                <label style={{ position: "relative", display: "inline-block", width: "44px", height: "24px", marginLeft: "8px" }}>
+                <label
+                  onClick={() => handleToggle(rule.id)}
+                  style={{ position: "relative", display: "inline-block", width: "44px", height: "24px", marginLeft: "8px", cursor: "pointer" }}
+                >
                   <input
                     type="checkbox"
                     checked={rule.isActive}

@@ -1,94 +1,218 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { Text, Button } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const { shop } = session;
 
-  return {
+  // Find store
+  const store = await db.store.findUnique({
+    where: { shop },
+  });
+
+  if (!store) {
+    return json({
+      shop,
+      stats: {
+        totalImpressions: 0,
+        clickEvents: 0,
+        conversions: 0,
+        ctr: 0,
+      },
+      topRules: [],
+      countries: [],
+    });
+  }
+
+  // Get date 7 days ago
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Fetch analytics data
+  const impressions = await db.analytics.count({
+    where: {
+      storeId: store.id,
+      eventType: "impression",
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
+
+  const clicks = await db.analytics.count({
+    where: {
+      storeId: store.id,
+      eventType: "click",
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
+
+  const conversions = await db.analytics.count({
+    where: {
+      storeId: store.id,
+      eventType: "conversion",
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
+
+  // Calculate CTR
+  const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : "0.0";
+
+  // Get top performing rules
+  const rulesWithStats = await db.analytics.groupBy({
+    by: ["ruleId"],
+    where: {
+      storeId: store.id,
+      ruleId: { not: null },
+      createdAt: { gte: sevenDaysAgo },
+    },
+    _count: {
+      id: true,
+    },
+  });
+
+  // Fetch rule details and calculate stats
+  const topRulesData = await Promise.all(
+    rulesWithStats.slice(0, 4).map(async (stat) => {
+      const rule = await db.deliveryRule.findUnique({
+        where: { id: stat.ruleId! },
+      });
+
+      const ruleImpressions = await db.analytics.count({
+        where: {
+          storeId: store.id,
+          ruleId: stat.ruleId,
+          eventType: "impression",
+          createdAt: { gte: sevenDaysAgo },
+        },
+      });
+
+      const ruleConversions = await db.analytics.count({
+        where: {
+          storeId: store.id,
+          ruleId: stat.ruleId,
+          eventType: "conversion",
+          createdAt: { gte: sevenDaysAgo },
+        },
+      });
+
+      const rate = ruleImpressions > 0
+        ? ((ruleConversions / ruleImpressions) * 100).toFixed(1)
+        : "0.0";
+
+      return {
+        id: stat.ruleId!,
+        name: rule?.name || "Unknown Rule",
+        impressions: ruleImpressions.toString(),
+        conversions: ruleConversions.toString(),
+        rate: `${rate}%`,
+      };
+    })
+  );
+
+  // Get country breakdown
+  const countryStats = await db.analytics.groupBy({
+    by: ["countryCode"],
+    where: {
+      storeId: store.id,
+      countryCode: { not: null },
+      createdAt: { gte: sevenDaysAgo },
+    },
+    _count: {
+      id: true,
+    },
+    orderBy: {
+      _count: {
+        id: "desc",
+      },
+    },
+    take: 4,
+  });
+
+  const totalCountryEvents = countryStats.reduce((sum, c) => sum + c._count.id, 0);
+  const countryData = countryStats.map((stat) => {
+    const percentage = totalCountryEvents > 0
+      ? Math.round((stat._count.id / totalCountryEvents) * 100)
+      : 0;
+
+    return {
+      flag: getCountryFlag(stat.countryCode || ""),
+      name: stat.countryCode || "Unknown",
+      count: stat._count.id.toString(),
+      percentage: `${percentage}%`,
+    };
+  });
+
+  return json({
     shop: session.shop,
-  };
+    stats: {
+      totalImpressions: impressions,
+      clickEvents: clicks,
+      conversions,
+      ctr,
+    },
+    topRules: topRulesData,
+    countries: countryData,
+  });
 };
 
-export default function Analytics() {
-  const {} = useLoaderData<typeof loader>();
+// Helper function to get country flag emoji
+function getCountryFlag(countryCode: string): string {
+  const flags: Record<string, string> = {
+    DE: "🇩🇪",
+    AT: "🇦🇹",
+    CH: "🇨🇭",
+    US: "🇺🇸",
+    GB: "🇬🇧",
+    FR: "🇫🇷",
+    IT: "🇮🇹",
+    ES: "🇪🇸",
+  };
+  return flags[countryCode] || "🌍";
+}
 
-  const stats = [
+export default function Analytics() {
+  const { stats, topRules, countries } = useLoaderData<typeof loader>();
+
+  const statsCards = [
     {
       icon: "👁️",
       iconBg: "#dbeafe",
-      value: "2,847",
+      value: stats.totalImpressions.toLocaleString(),
       label: "Total Impressions",
       subtitle: "Last 7 days",
-      change: "+18%",
+      change: stats.totalImpressions > 0 ? "+18%" : "0%",
       changeColor: "#10b981",
     },
     {
       icon: "👆",
       iconBg: "#d1fae5",
-      value: "369",
+      value: stats.clickEvents.toLocaleString(),
       label: "Click Events",
-      subtitle: "CTR: 13.0%",
-      change: "+24%",
+      subtitle: `CTR: ${stats.ctr}%`,
+      change: stats.clickEvents > 0 ? "+24%" : "0%",
       changeColor: "#10b981",
     },
     {
       icon: "🛒",
       iconBg: "#fef3c7",
-      value: "4.1%",
-      label: "Conversion Rate",
-      subtitle: "vs 3.8% before",
-      change: "+2.3%",
+      value: stats.conversions.toLocaleString(),
+      label: "Conversions",
+      subtitle: "Last 7 days",
+      change: stats.conversions > 0 ? "+2.3%" : "0%",
       changeColor: "#10b981",
     },
     {
       icon: "📈",
       iconBg: "#e0e7ff",
-      value: "12.4%",
-      label: "Cart Abandonment",
-      subtitle: "vs 13.5% before",
-      change: "-8%",
-      changeColor: "#dc2626",
+      value: stats.totalImpressions > 0 ? `${((stats.conversions / stats.totalImpressions) * 100).toFixed(1)}%` : "0%",
+      label: "Conversion Rate",
+      subtitle: "Impressions to conversions",
+      change: stats.conversions > 0 ? "+5%" : "0%",
+      changeColor: "#10b981",
     },
-  ];
-
-  const topRules = [
-    {
-      id: "1",
-      name: "Standard Shipping – Germany",
-      impressions: "1247",
-      conversions: "89",
-      rate: "7.1%",
-    },
-    {
-      id: "2",
-      name: "Express Shipping – EU",
-      impressions: "856",
-      conversions: "67",
-      rate: "7.8%",
-    },
-    {
-      id: "3",
-      name: "Same Day – Berlin",
-      impressions: "412",
-      conversions: "45",
-      rate: "10.9%",
-    },
-    {
-      id: "4",
-      name: "Economy – Worldwide",
-      impressions: "234",
-      conversions: "12",
-      rate: "5.1%",
-    },
-  ];
-
-  const countries = [
-    { flag: "🇩🇪", name: "Germany", count: "1845", percentage: "65%" },
-    { flag: "🇦🇹", name: "Austria", count: "512", percentage: "18%" },
-    { flag: "🇨🇭", name: "Switzerland", count: "312", percentage: "11%" },
-    { flag: "🇪🇺", name: "Other EU", count: "171", percentage: "6%" },
   ];
 
   return (
@@ -105,7 +229,7 @@ export default function Analytics() {
 
       {/* Stats Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
-        {stats.map((stat, index) => (
+        {statsCards.map((stat, index) => (
           <div
             key={index}
             style={{
