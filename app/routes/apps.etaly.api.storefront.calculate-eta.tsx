@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import db from "../../db.server";
-import ETACalculator from "../../services/eta-calculator.server";
+import db from "../db.server";
+import ETACalculator from "../services/eta-calculator.server";
 
 // Public API endpoint for storefront (no authentication required)
 export async function action({ request }: ActionFunctionArgs) {

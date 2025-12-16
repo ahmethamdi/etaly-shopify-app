@@ -3,7 +3,7 @@
 client_id = "e0143e253cb68f1db0a1037c8cdf1411"
 name = "ETAly"
 application_url = "https://example.com"
-embedded = false
+embedded = true
 
 [webhooks]
 api_version = "2025-10"
