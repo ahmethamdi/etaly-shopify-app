@@ -1,0 +1,78 @@
+{% comment %}
+  ETAly - Delivery ETA Display Block
+  Shows estimated delivery date on product pages
+{% endcomment %}
+
+<div
+  class="etaly-delivery-eta"
+  data-etaly-block
+  data-product-id="{{ product.id }}"
+  data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+  data-style="{{ block.settings.style }}"
+  data-show-icon="{{ block.settings.show_icon }}"
+  data-icon="{{ block.settings.icon }}"
+  data-show-cutoff="{{ block.settings.show_cutoff_timer }}"
+>
+  <div class="etaly-eta-loading">
+    <svg class="etaly-spinner" width="20" height="20" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="50" stroke-dashoffset="0">
+        <animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="1s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+    <span>Calculating delivery estimate...</span>
+  </div>
+
+  <div class="etaly-eta-content" style="display: none;">
+    {% if block.settings.show_icon %}
+      <span class="etaly-eta-icon">{{ block.settings.icon }}</span>
+    {% endif %}
+    <div class="etaly-eta-message">
+      <span class="etaly-eta-text"></span>
+      {% if block.settings.show_cutoff_timer %}
+        <span class="etaly-cutoff-timer" style="display: none;"></span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="etaly-eta-error" style="display: none;">
+    <span>Unable to calculate delivery estimate</span>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Delivery ETA",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_icon",
+      "label": "Show icon",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "icon",
+      "label": "Icon",
+      "default": "🚚"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "options": [
+        {"value": "info", "label": "Info"},
+        {"value": "success", "label": "Success"},
+        {"value": "warning", "label": "Warning"}
+      ],
+      "default": "success"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_cutoff_timer",
+      "label": "Show cutoff timer",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

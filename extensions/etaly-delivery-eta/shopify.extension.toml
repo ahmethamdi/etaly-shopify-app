@@ -1,0 +1,16 @@
+api_version = "2025-01"
+
+[[extensions]]
+type = "theme_app_extension"
+name = "ETAly - Delivery ETA"
+handle = "etaly-delivery-eta"
+
+[extensions.settings]
+  [[extensions.settings.blocks]]
+  type = "delivery_eta"
+  name = "Delivery ETA"
+  target = "product"
+  schema = "blocks/delivery_eta.json"
+  template = "blocks/delivery_eta.liquid"
+  javascript = "blocks/delivery_eta.js"
+  stylesheet = "blocks/delivery_eta.css"
