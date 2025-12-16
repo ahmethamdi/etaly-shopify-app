@@ -1,6 +1,7 @@
 api_version = "2025-01"
 
 [[extensions]]
+uid = "e8fc91b2-a652-7d62-94df-404f8bfcaa5a9a732f23"
 type = "theme_app_extension"
 name = "ETAly - Delivery ETA"
 handle = "etaly-delivery-eta"

@@ -128,60 +128,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 };
 
-// Mock delivery rules data for initial display if no rules exist
-const mockRules = [
-    {
-      id: "1",
-      name: "Standard Shipping – Germany",
-      carrier: "DHL Standard",
-      location: "Germany",
-      deliveryTime: "2-3 business days",
-      cutoffTime: "14:00",
-      isActive: true,
-    },
-    {
-      id: "2",
-      name: "Express Shipping – EU",
-      carrier: "DPD Express",
-      location: "European Union",
-      deliveryTime: "1-2 business days",
-      cutoffTime: "16:00",
-      isActive: true,
-    },
-    {
-      id: "3",
-      name: "Economy Shipping – Worldwide",
-      carrier: "Standard Post",
-      location: "International",
-      deliveryTime: "5-10 business days",
-      cutoffTime: "12:00",
-      isActive: false,
-    },
-    {
-      id: "4",
-      name: "Same Day – Berlin",
-      carrier: "Local Courier",
-      location: "Germany",
-      deliveryTime: "Same day",
-      cutoffTime: "11:00",
-      isActive: true,
-    },
-    {
-      id: "5",
-      name: "Premium Shipping – Austria",
-      carrier: "UPS Express",
-      location: "Austria",
-      deliveryTime: "1-2 business days",
-      cutoffTime: "15:00",
-      isActive: true,
-    },
-  ];
-
-  return {
-    shop: session.shop,
-    deliveryRules,
-  };
-};
 
 export default function DeliveryRules() {
   const { deliveryRules } = useLoaderData<typeof loader>();

@@ -37,7 +37,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: {
       storeId: store.id,
       eventType: "impression",
-      createdAt: { gte: sevenDaysAgo },
+      timestamp: { gte: sevenDaysAgo },
     },
   });
 
@@ -45,7 +45,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: {
       storeId: store.id,
       eventType: "click",
-      createdAt: { gte: sevenDaysAgo },
+      timestamp: { gte: sevenDaysAgo },
     },
   });
 
@@ -53,7 +53,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: {
       storeId: store.id,
       eventType: "conversion",
-      createdAt: { gte: sevenDaysAgo },
+      timestamp: { gte: sevenDaysAgo },
     },
   });
 
@@ -66,7 +66,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: {
       storeId: store.id,
       ruleId: { not: null },
-      createdAt: { gte: sevenDaysAgo },
+      timestamp: { gte: sevenDaysAgo },
     },
     _count: {
       id: true,
@@ -85,7 +85,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           storeId: store.id,
           ruleId: stat.ruleId,
           eventType: "impression",
-          createdAt: { gte: sevenDaysAgo },
+          timestamp: { gte: sevenDaysAgo },
         },
       });
 
@@ -94,7 +94,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           storeId: store.id,
           ruleId: stat.ruleId,
           eventType: "conversion",
-          createdAt: { gte: sevenDaysAgo },
+          timestamp: { gte: sevenDaysAgo },
         },
       });
 
@@ -118,7 +118,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: {
       storeId: store.id,
       countryCode: { not: null },
-      createdAt: { gte: sevenDaysAgo },
+      timestamp: { gte: sevenDaysAgo },
     },
     _count: {
       id: true,
