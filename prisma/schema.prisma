@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// Store settings and configuration
+model Store {
+  id                String   @id @default(cuid())
+  shop              String   @unique
+  plan              String   @default("free") // free, pro, advanced
+  isActive          Boolean  @default(true)
+
+  // Holiday & Weekend settings
+  excludeWeekends   Boolean  @default(true)
+  skipHolidays      Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  settings          Settings?
+  deliveryRules     DeliveryRule[]
+  holidays          Holiday[]
+  analytics         Analytics[]
+}
+
+// App settings per store
+model Settings {
+  id                String   @id @default(cuid())
+  storeId           String   @unique
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Language & Region
+  defaultLanguage   String   @default("en")
+
+  // Date & Time Format
+  dateFormat        String   @default("DD/MM/YYYY")
+  timeFormat        String   @default("24") // 24 or 12
+
+  // Display Settings
+  customCSS         String?
+
+  // Debug Mode
+  debugMode         Boolean  @default(false)
+
+  // Product Targeting
+  targetingMode     String   @default("all") // all, specific, collections
+  targetTags        String?  // JSON array of tags
+  excludedProducts  String?  // JSON array of product IDs
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Delivery rules
+model DeliveryRule {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Rule details
+  name              String
+  isActive          Boolean  @default(true)
+  priority          Int      @default(0)
+
+  // Location settings
+  countries         String   // JSON array of country codes
+  regions           String?  // JSON array of regions/states
+  postalCodes       String?  // JSON array or pattern
+
+  // Carrier settings
+  carrier           String?  // DHL, UPS, FedEx, etc.
+  shippingMethod    String?  // Standard, Express, etc.
+
+  // Time settings
+  cutoffTime        String?  // HH:mm format
+  cutoffTimezone    String   @default("UTC")
+
+  // Delivery time
+  minDays           Int      @default(2)
+  maxDays           Int      @default(5)
+
+  // Processing time
+  processingDays    Int      @default(0)
+
+  // Weekend & Holiday handling
+  excludeWeekends   Boolean  @default(true)
+  excludeHolidays   Boolean  @default(true)
+
+  // Message template
+  messageTemplate   String?
+  messageIcon       String?
+  messageColor      String?
+  messageBgColor    String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId, isActive])
+}
+
+// Holidays and excluded dates
+model Holiday {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  name              String
+  date              DateTime
+  countryCode       String?  // null for all countries
+  isRecurring       Boolean  @default(false) // Yearly recurring
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId, date])
+}
+
+// Analytics tracking
+model Analytics {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Event details
+  eventType         String   // impression, click, conversion
+  ruleId            String?  // Which delivery rule was shown
+
+  // Product details
+  productId         String?
+  variantId         String?
+
+  // Location
+  countryCode       String?
+
+  // Page context
+  pageType          String?  // product, cart, checkout
+
+  // Conversion tracking
+  orderId           String?
+  orderValue        Float?
+
+  timestamp         DateTime @default(now())
+
+  @@index([storeId, eventType, timestamp])
+  @@index([storeId, ruleId])
+}

@@ -1,0 +1,12 @@
+.cache
+build
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+README.md
+.vscode
+dist
+*.sqlite
+*.sqlite-journal

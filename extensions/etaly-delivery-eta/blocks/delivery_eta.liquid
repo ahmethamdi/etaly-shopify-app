@@ -1,0 +1,369 @@
+{% comment %}
+  ETAly - Delivery ETA Display Block
+  Shows estimated delivery date on product pages
+{% endcomment %}
+
+<div
+  class="etaly-delivery-eta"
+  data-etaly-block
+  data-product-id="{{ product.id }}"
+  data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+  data-style="{{ block.settings.style }}"
+  data-show-icon="{{ block.settings.show_icon }}"
+  data-icon="{{ block.settings.icon }}"
+  data-show-cutoff="{{ block.settings.show_cutoff_timer }}"
+>
+  <div class="etaly-eta-loading">
+    <svg class="etaly-spinner" width="20" height="20" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="50" stroke-dashoffset="0">
+        <animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="1s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+    <span>Calculating delivery estimate...</span>
+  </div>
+
+  <div class="etaly-eta-content" style="display: none;">
+    {% if block.settings.show_icon %}
+      <span class="etaly-eta-icon">{{ block.settings.icon }}</span>
+    {% endif %}
+    <div class="etaly-eta-message">
+      <span class="etaly-eta-text"></span>
+      {% if block.settings.show_cutoff_timer %}
+        <span class="etaly-cutoff-timer" style="display: none;"></span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="etaly-eta-error" style="display: none;">
+    <span>Unable to calculate delivery estimate</span>
+  </div>
+</div>
+
+<style>
+.etaly-delivery-eta {
+  margin: 16px 0;
+  font-family: inherit;
+}
+
+.etaly-eta-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.etaly-spinner {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.etaly-eta-content {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.etaly-eta-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.etaly-eta-message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.etaly-eta-text {
+  font-weight: 600;
+}
+
+.etaly-cutoff-timer {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.etaly-eta-error {
+  display: none;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.etaly-style-info .etaly-eta-content {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.etaly-style-success .etaly-eta-content {
+  background: #d1fae5;
+  border: 1px solid #86efac;
+  color: #047857;
+}
+
+.etaly-style-warning .etaly-eta-content {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #b45309;
+}
+
+@media (max-width: 768px) {
+  .etaly-delivery-eta {
+    margin: 12px 0;
+  }
+  .etaly-eta-content,
+  .etaly-eta-loading {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .etaly-eta-icon {
+    font-size: 18px;
+  }
+  .etaly-cutoff-timer {
+    font-size: 11px;
+  }
+}
+
+@keyframes etaly-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.etaly-eta-content {
+  animation: etaly-fade-in 0.3s ease-out;
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+
+  const API_ENDPOINT = '/apps/etaly/api/storefront/calculate-eta';
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function init() {
+    const blocks = document.querySelectorAll('[data-etaly-block]');
+    blocks.forEach(block => initBlock(block));
+  }
+
+  async function initBlock(block) {
+    const productId = block.dataset.productId;
+    const variantId = block.dataset.variantId;
+    const style = block.dataset.style || 'success';
+    const showCutoff = block.dataset.showCutoff === 'true';
+
+    if (!productId) {
+      showError(block);
+      return;
+    }
+
+    try {
+      const countryCode = await getCustomerCountry();
+      const eta = await fetchETA({
+        productId,
+        variantId,
+        countryCode
+      });
+
+      if (eta && eta.success) {
+        displayETA(block, eta.eta, style, showCutoff);
+        trackImpression(productId, variantId, eta.eta.ruleId);
+      } else {
+        showError(block);
+      }
+    } catch (error) {
+      console.error('ETAly: Error fetching delivery estimate', error);
+      showError(block);
+    }
+  }
+
+  async function fetchETA(params) {
+    const formData = new FormData();
+    formData.append('productId', params.productId);
+    formData.append('variantId', params.variantId);
+    formData.append('countryCode', params.countryCode);
+
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch ETA');
+    }
+
+    return await response.json();
+  }
+
+  function displayETA(block, eta, style, showCutoff) {
+    const loadingEl = block.querySelector('.etaly-eta-loading');
+    const contentEl = block.querySelector('.etaly-eta-content');
+    const textEl = block.querySelector('.etaly-eta-text');
+    const cutoffEl = block.querySelector('.etaly-cutoff-timer');
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'flex';
+    textEl.textContent = eta.message;
+    block.classList.add(`etaly-style-${style}`);
+
+    if (showCutoff && cutoffEl && eta.cutoffTime) {
+      cutoffEl.style.display = 'inline';
+      startCutoffTimer(cutoffEl, eta.cutoffTime);
+    }
+  }
+
+  function showError(block) {
+    const loadingEl = block.querySelector('.etaly-eta-loading');
+    const errorEl = block.querySelector('.etaly-eta-error');
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'block';
+  }
+
+  async function getCustomerCountry() {
+    if (typeof Shopify !== 'undefined' && Shopify.country) {
+      return Shopify.country;
+    }
+    if (typeof Shopify !== 'undefined' && Shopify.Checkout && Shopify.Checkout.country) {
+      return Shopify.Checkout.country;
+    }
+    try {
+      const response = await fetch('/apps/etaly/api/storefront/detect-country');
+      const data = await response.json();
+      return data.countryCode || 'US';
+    } catch (error) {
+      console.warn('ETAly: Could not detect country, defaulting to US');
+      return 'US';
+    }
+  }
+
+  function startCutoffTimer(element, cutoffTime) {
+    const [hours, minutes] = cutoffTime.split(':').map(Number);
+
+    function updateTimer() {
+      const now = new Date();
+      const cutoff = new Date();
+      cutoff.setHours(hours, minutes, 0, 0);
+
+      if (now > cutoff) {
+        element.textContent = 'Order by tomorrow for next-day delivery';
+        return;
+      }
+
+      const diff = cutoff - now;
+      const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      element.textContent = `Order within ${hoursLeft}h ${minutesLeft}m for same-day processing`;
+    }
+
+    updateTimer();
+    setInterval(updateTimer, 60000);
+  }
+
+  function trackImpression(productId, variantId, ruleId) {
+    const trackData = new FormData();
+    trackData.append('eventType', 'impression');
+    trackData.append('productId', productId);
+    trackData.append('variantId', variantId);
+    trackData.append('ruleId', ruleId);
+    trackData.append('pageType', 'product');
+
+    fetch('/apps/etaly/api/storefront/track', {
+      method: 'POST',
+      body: trackData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    }).catch(err => {
+      console.warn('ETAly: Failed to track impression', err);
+    });
+  }
+
+  if (typeof Shopify !== 'undefined') {
+    document.addEventListener('change', function(e) {
+      if (e.target.name === 'id' || e.target.classList.contains('product-form__variant')) {
+        const blocks = document.querySelectorAll('[data-etaly-block]');
+        blocks.forEach(block => {
+          block.dataset.variantId = e.target.value;
+          initBlock(block);
+        });
+      }
+    });
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Delivery ETA",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_icon",
+      "label": "Show icon",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "icon",
+      "label": "Icon",
+      "default": "🚚"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Message style",
+      "options": [
+        {
+          "value": "info",
+          "label": "Info (Blue)"
+        },
+        {
+          "value": "success",
+          "label": "Success (Green)"
+        },
+        {
+          "value": "warning",
+          "label": "Warning (Orange)"
+        }
+      ],
+      "default": "success"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_cutoff_timer",
+      "label": "Show cutoff timer",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

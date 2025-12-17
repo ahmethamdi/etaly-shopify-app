@@ -1,0 +1,11 @@
+api_version = "2025-01"
+
+[[extensions]]
+uid = "e8fc91b2-a652-7d62-94df-404f8bfcaa5a9a732f23"
+type = "theme"
+name = "etaly-delivery-eta"
+handle = "etaly-delivery-eta"
+
+[[extensions.blocks]]
+type = "delivery_eta"
+name = "Delivery ETA"
