@@ -9,17 +9,43 @@ import { useState, useEffect } from "react";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, admin } = await authenticate.admin(request);
 
-  // Fetch settings from API
-  const url = new URL(request.url);
-  const apiUrl = `${url.origin}/app/api/cart-checkout-settings`;
-
-  const response = await fetch(apiUrl, {
-    headers: {
-      Authorization: request.headers.get("Authorization") || "",
+  // Get or create store with settings
+  let store = await db.store.findUnique({
+    where: { shop: session.shop },
+    include: {
+      cartCheckoutSettings: true,
     },
   });
 
-  const data = await response.json();
+  if (!store) {
+    store = await db.store.create({
+      data: {
+        shop: session.shop,
+        plan: "free",
+        isActive: true,
+      },
+      include: {
+        cartCheckoutSettings: true,
+      },
+    });
+  }
+
+  // If no settings exist, create default settings
+  let settings = store.cartCheckoutSettings;
+  if (!settings) {
+    settings = await db.cartCheckoutSettings.create({
+      data: {
+        storeId: store.id,
+        cartEnabled: true,
+        cartPosition: "under_product_title",
+        cartStyle: "info",
+        cartAggregation: "latest",
+        checkoutEnabled: true,
+        checkoutPosition: "order_summary_section",
+        checkoutStyle: "success",
+      },
+    });
+  }
 
   // Fetch a sample product from the store for preview
   let sampleProduct = null;
@@ -61,18 +87,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     console.error("Error fetching sample product:", error);
   }
 
-  // Get store plan from database
-  const store = await db.store.findUnique({
-    where: { shop: session.shop },
-  });
-
-  const userPlan = store?.plan || "free";
-
   return json({
     shop: session.shop,
-    settings: data.settings,
+    settings,
     sampleProduct,
-    userPlan,
+    userPlan: store.plan || "free",
   });
 };
 
@@ -80,21 +99,88 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
 
-  // Forward to API
-  const url = new URL(request.url);
-  const apiUrl = `${url.origin}/app/api/cart-checkout-settings`;
+  try {
+    // Get or create store
+    let store = await db.store.findUnique({
+      where: { shop: session.shop },
+      include: {
+        cartCheckoutSettings: true,
+      },
+    });
 
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: request.headers.get("Authorization") || "",
-    },
-    body: formData,
-  });
+    if (!store) {
+      store = await db.store.create({
+        data: {
+          shop: session.shop,
+          plan: "free",
+          isActive: true,
+        },
+        include: {
+          cartCheckoutSettings: true,
+        },
+      });
+    }
 
-  const data = await response.json();
+    // Build update data
+    const updateData: any = {};
 
-  return json(data);
+    // Cart settings
+    if (formData.has("cartEnabled"))
+      updateData.cartEnabled = formData.get("cartEnabled") === "true";
+    if (formData.has("cartPosition"))
+      updateData.cartPosition = formData.get("cartPosition");
+    if (formData.has("cartStyle"))
+      updateData.cartStyle = formData.get("cartStyle");
+    if (formData.has("cartAggregation"))
+      updateData.cartAggregation = formData.get("cartAggregation");
+
+    // Checkout settings
+    if (formData.has("checkoutEnabled"))
+      updateData.checkoutEnabled = formData.get("checkoutEnabled") === "true";
+    if (formData.has("checkoutPosition"))
+      updateData.checkoutPosition = formData.get("checkoutPosition");
+    if (formData.has("checkoutStyle"))
+      updateData.checkoutStyle = formData.get("checkoutStyle");
+
+    let settings;
+
+    if (store.cartCheckoutSettings) {
+      // Update existing settings
+      settings = await db.cartCheckoutSettings.update({
+        where: { storeId: store.id },
+        data: updateData,
+      });
+    } else {
+      // Create new settings
+      settings = await db.cartCheckoutSettings.create({
+        data: {
+          storeId: store.id,
+          cartEnabled: updateData.cartEnabled ?? true,
+          cartPosition: updateData.cartPosition ?? "under_product_title",
+          cartStyle: updateData.cartStyle ?? "info",
+          cartAggregation: updateData.cartAggregation ?? "latest",
+          checkoutEnabled: updateData.checkoutEnabled ?? true,
+          checkoutPosition: updateData.checkoutPosition ?? "order_summary_section",
+          checkoutStyle: updateData.checkoutStyle ?? "success",
+        },
+      });
+    }
+
+    return json({
+      success: true,
+      settings,
+      message: "Cart & Checkout settings saved successfully",
+    });
+  } catch (error) {
+    console.error("Error saving cart-checkout settings:", error);
+    return json(
+      {
+        success: false,
+        error: "Failed to save cart-checkout settings",
+      },
+      { status: 500 }
+    );
+  }
 };
 
 export default function CartCheckout() {
