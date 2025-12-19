@@ -7,106 +7,133 @@ import db from "../db.server";
 import { useState, useEffect } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session, admin } = await authenticate.admin(request);
+  try {
+    const { session, admin } = await authenticate.admin(request);
 
-  // Get store
-  const store = await db.store.findUnique({
-    where: { shop: session.shop },
-    include: { settings: true },
-  });
-
-  if (!store) {
-    throw new Error("Store not found");
-  }
-
-  // Create settings if not exists
-  let settings = store.settings;
-  if (!settings) {
-    settings = await db.settings.create({
-      data: {
-        storeId: store.id,
-      },
+    // Get store
+    const store = await db.store.findUnique({
+      where: { shop: session.shop },
+      include: { settings: true },
     });
-  }
 
-  // Fetch products from Shopify using GraphQL
-  const productsQuery = `
-    query {
-      products(first: 50) {
-        edges {
-          node {
-            id
-            title
-            featuredImage {
-              url
-              altText
-            }
-            priceRangeV2 {
-              minVariantPrice {
-                amount
-                currencyCode
+    if (!store) {
+      throw new Error("Store not found");
+    }
+
+    // Create settings if not exists
+    let settings = store.settings;
+    if (!settings) {
+      settings = await db.settings.create({
+        data: {
+          storeId: store.id,
+        },
+      });
+    }
+
+    let products = [];
+    let collections = [];
+
+    // Try to fetch products from Shopify using GraphQL
+    try {
+      const productsQuery = `
+        query {
+          products(first: 50) {
+            edges {
+              node {
+                id
+                title
+                featuredImage {
+                  url
+                  altText
+                }
+                priceRangeV2 {
+                  minVariantPrice {
+                    amount
+                    currencyCode
+                  }
+                }
+                totalInventory
+                status
+                tags
               }
             }
-            totalInventory
-            status
-            tags
           }
         }
+      `;
+
+      const productsResponse = await admin.graphql(productsQuery);
+      const productsData = await productsResponse.json();
+
+      if (productsData?.data?.products?.edges) {
+        products = productsData.data.products.edges.map((edge: any) => ({
+          id: edge.node.id.replace('gid://shopify/Product/', ''),
+          title: edge.node.title,
+          image: edge.node.featuredImage?.url || null,
+          price: edge.node.priceRangeV2.minVariantPrice.amount,
+          currency: edge.node.priceRangeV2.minVariantPrice.currencyCode,
+          inventory: edge.node.totalInventory || 0,
+          status: edge.node.status,
+          tags: edge.node.tags || [],
+        }));
       }
+    } catch (error) {
+      console.error("Error fetching products:", error);
     }
-  `;
 
-  const productsResponse = await admin.graphql(productsQuery);
-  const productsData = await productsResponse.json();
-
-  const products = productsData.data.products.edges.map((edge: any) => ({
-    id: edge.node.id.replace('gid://shopify/Product/', ''),
-    title: edge.node.title,
-    image: edge.node.featuredImage?.url || null,
-    price: edge.node.priceRangeV2.minVariantPrice.amount,
-    currency: edge.node.priceRangeV2.minVariantPrice.currencyCode,
-    inventory: edge.node.totalInventory || 0,
-    status: edge.node.status,
-    tags: edge.node.tags || [],
-  }));
-
-  // Fetch collections from Shopify
-  const collectionsQuery = `
-    query {
-      collections(first: 50) {
-        edges {
-          node {
-            id
-            title
-            productsCount
-            image {
-              url
-              altText
+    // Try to fetch collections from Shopify
+    try {
+      const collectionsQuery = `
+        query {
+          collections(first: 50) {
+            edges {
+              node {
+                id
+                title
+                productsCount
+                image {
+                  url
+                  altText
+                }
+              }
             }
           }
         }
+      `;
+
+      const collectionsResponse = await admin.graphql(collectionsQuery);
+      const collectionsData = await collectionsResponse.json();
+
+      if (collectionsData?.data?.collections?.edges) {
+        collections = collectionsData.data.collections.edges.map((edge: any) => ({
+          id: edge.node.id.replace('gid://shopify/Collection/', ''),
+          title: edge.node.title,
+          productsCount: edge.node.productsCount,
+          image: edge.node.image?.url || null,
+        }));
       }
+    } catch (error) {
+      console.error("Error fetching collections:", error);
     }
-  `;
 
-  const collectionsResponse = await admin.graphql(collectionsQuery);
-  const collectionsData = await collectionsResponse.json();
-
-  const collections = collectionsData.data.collections.edges.map((edge: any) => ({
-    id: edge.node.id.replace('gid://shopify/Collection/', ''),
-    title: edge.node.title,
-    productsCount: edge.node.productsCount,
-    image: edge.node.image?.url || null,
-  }));
-
-  return json({
-    shop: session.shop,
-    targetingMode: settings.targetingMode || "all",
-    targetTags: settings.targetTags ? JSON.parse(settings.targetTags) : [],
-    excludedProducts: settings.excludedProducts ? JSON.parse(settings.excludedProducts) : [],
-    products,
-    collections,
-  });
+    return json({
+      shop: session.shop,
+      targetingMode: settings.targetingMode || "all",
+      targetTags: settings.targetTags ? JSON.parse(settings.targetTags) : [],
+      excludedProducts: settings.excludedProducts ? JSON.parse(settings.excludedProducts) : [],
+      products,
+      collections,
+    });
+  } catch (error) {
+    console.error("Loader error:", error);
+    return json({
+      shop: "unknown",
+      targetingMode: "all",
+      targetTags: [],
+      excludedProducts: [],
+      products: [],
+      collections: [],
+    });
+  }
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
