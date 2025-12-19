@@ -26,17 +26,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 
   // Format holidays for display
-  const formattedHolidays = holidays.map((h) => ({
-    id: h.id,
-    name: h.name,
-    date: new Date(h.date).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-    rawDate: h.date.toISOString(),
-    type: h.isRecurring ? "Recurring Holiday" : "Custom Holiday",
-  }));
+  const formattedHolidays = holidays.map((h) => {
+    // Check if it's a preset holiday (contains country name in parentheses)
+    const isPreset = /\([A-Za-z\s]+\)$/.test(h.name);
+    return {
+      id: h.id,
+      name: h.name,
+      date: new Date(h.date).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      rawDate: h.date.toISOString(),
+      type: isPreset ? "Preset Holiday" : "Custom Holiday",
+      isPreset,
+    };
+  });
 
   return json({
     shop: session.shop,
@@ -216,9 +221,11 @@ export default function Holidays() {
 
   const calendarDays = generateCalendar(currentMonth, currentYear);
 
-  // Get excluded days based on settings and holidays
+  // Get excluded days based on settings and holidays (with type distinction)
   const getExcludedDays = () => {
-    const excluded: number[] = [];
+    const weekends: number[] = [];
+    const customHolidays: number[] = [];
+    const presetHolidays: number[] = [];
 
     for (let day = 1; day <= new Date(currentYear, currentMonth + 1, 0).getDate(); day++) {
       const date = new Date(currentYear, currentMonth, day);
@@ -226,29 +233,47 @@ export default function Holidays() {
 
       // Check weekends
       if (excludeWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) {
-        excluded.push(day);
+        weekends.push(day);
         continue;
       }
 
       // Check holidays
       if (skipHolidays) {
-        const dateStr = date.toISOString().split('T')[0];
-        const isHoliday = holidays.some(h => {
+        const matchingHoliday = holidays.find(h => {
           const holidayDate = new Date(h.rawDate);
           return holidayDate.getDate() === day &&
                  holidayDate.getMonth() === currentMonth &&
                  holidayDate.getFullYear() === currentYear;
         });
-        if (isHoliday) {
-          excluded.push(day);
+
+        if (matchingHoliday) {
+          if (matchingHoliday.isPreset) {
+            presetHolidays.push(day);
+          } else {
+            customHolidays.push(day);
+          }
         }
       }
     }
 
-    return excluded;
+    return { weekends, customHolidays, presetHolidays };
   };
 
-  const excludedDays = getExcludedDays();
+  const { weekends, customHolidays, presetHolidays } = getExcludedDays();
+
+  // Group holidays by country for preset display
+  const presetHolidayGroups = holidays
+    .filter(h => h.isPreset)
+    .reduce((acc, holiday) => {
+      // Extract country name from holiday name (e.g., "Christmas (Germany)" -> "Germany")
+      const match = holiday.name.match(/\(([^)]+)\)$/);
+      const country = match ? match[1] : "Unknown";
+      if (!acc[country]) {
+        acc[country] = [];
+      }
+      acc[country].push(holiday);
+      return acc;
+    }, {} as Record<string, typeof holidays>);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -728,9 +753,61 @@ export default function Holidays() {
               </div>
             </div>
 
-            {/* Holiday List */}
-            <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "0" }}>
-              {holidays.map((holiday, index) => (
+            {/* Loaded Holiday Presets */}
+            {Object.keys(presetHolidayGroups).length > 0 && (
+              <div style={{ marginTop: "24px" }}>
+                <Text as="p" variant="bodyMd" fontWeight="medium">
+                  Loaded Holiday Presets
+                </Text>
+                <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {Object.entries(presetHolidayGroups).map(([country, countryHolidays]) => (
+                    <div
+                      key={country}
+                      style={{
+                        padding: "16px",
+                        background: "#f8f9ff",
+                        border: "1px solid #e0e7ff",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                        <Text as="p" variant="bodyMd" fontWeight="semibold">
+                          <span style={{ color: "#6366f1" }}>
+                            {country} ({countryHolidays.length} holidays)
+                          </span>
+                        </Text>
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#6b7280", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {countryHolidays.map((h) => (
+                          <span
+                            key={h.id}
+                            style={{
+                              padding: "4px 8px",
+                              background: "white",
+                              border: "1px solid #e0e7ff",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            {h.name.replace(/\s*\([^)]+\)$/, '')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom Holiday List */}
+            {holidays.filter(h => !h.isPreset).length > 0 && (
+              <div style={{ marginTop: "24px" }}>
+                <Text as="p" variant="bodyMd" fontWeight="medium">
+                  Custom Holidays
+                </Text>
+              </div>
+            )}
+            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "0" }}>
+              {holidays.filter(h => !h.isPreset).map((holiday, index) => (
                 <div
                   key={holiday.id}
                   style={{
@@ -887,7 +964,28 @@ export default function Holidays() {
                   }}
                 >
                   {week.map((day, dayIndex) => {
-                    const isExcluded = day && excludedDays.includes(day);
+                    const isWeekend = day && weekends.includes(day);
+                    const isCustomHoliday = day && customHolidays.includes(day);
+                    const isPresetHoliday = day && presetHolidays.includes(day);
+
+                    let bgColor = "transparent";
+                    let textColor = "#1f2937";
+                    let fontWeight = "400";
+
+                    if (isWeekend) {
+                      bgColor = "#fee2e2"; // Light red for weekends
+                      textColor = "#dc2626";
+                      fontWeight = "600";
+                    } else if (isPresetHoliday) {
+                      bgColor = "#e0e7ff"; // Light purple for preset holidays
+                      textColor = "#6366f1";
+                      fontWeight = "600";
+                    } else if (isCustomHoliday) {
+                      bgColor = "#fef3c7"; // Light yellow for custom holidays
+                      textColor = "#f59e0b";
+                      fontWeight = "600";
+                    }
+
                     return (
                       <div
                         key={dayIndex}
@@ -897,10 +995,10 @@ export default function Holidays() {
                           alignItems: "center",
                           justifyContent: "center",
                           borderRadius: "8px",
-                          background: isExcluded ? "#fecaca" : "transparent",
+                          background: bgColor,
                           fontSize: "14px",
-                          fontWeight: isExcluded ? "600" : "400",
-                          color: isExcluded ? "#dc2626" : "#1f2937",
+                          fontWeight,
+                          color: textColor,
                         }}
                       >
                         {day || ""}
@@ -937,11 +1035,37 @@ export default function Holidays() {
                       width: "16px",
                       height: "16px",
                       borderRadius: "4px",
-                      background: "#fecaca",
+                      background: "#fee2e2",
                     }}
                   />
                   <Text as="span" variant="bodySm" tone="subdued">
-                    Excluded days (weekends/holidays)
+                    Weekends
+                  </Text>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "4px",
+                      background: "#e0e7ff",
+                    }}
+                  />
+                  <Text as="span" variant="bodySm" tone="subdued">
+                    Preset holidays (loaded from country)
+                  </Text>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "4px",
+                      background: "#fef3c7",
+                    }}
+                  />
+                  <Text as="span" variant="bodySm" tone="subdued">
+                    Custom holidays (manually added)
                   </Text>
                 </div>
               </div>
