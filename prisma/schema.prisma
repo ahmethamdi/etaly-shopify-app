@@ -52,6 +52,7 @@ model Store {
   deliveryRules     DeliveryRule[]
   holidays          Holiday[]
   analytics         Analytics[]
+  cartCheckoutSettings CartCheckoutSettings?
 }
 
 // App settings per store
@@ -174,4 +175,27 @@ model Analytics {
 
   @@index([storeId, eventType, timestamp])
   @@index([storeId, ruleId])
+}
+
+// Cart & Checkout ETA Settings
+model CartCheckoutSettings {
+  id                String   @id @default(cuid())
+  storeId           String   @unique
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Cart Settings
+  cartEnabled       Boolean  @default(true)
+  cartPosition      String   @default("under_product_title") // under_product_title, above_product_title, below_price
+  cartStyle         String   @default("info") // info, success, warning
+  cartAggregation   String   @default("latest") // latest (always show latest delivery date when multiple products)
+
+  // Checkout Settings
+  checkoutEnabled   Boolean  @default(true)
+  checkoutPosition  String   @default("order_summary_section") // order_summary_section, above_order_summary, below_order_summary
+  checkoutStyle     String   @default("success") // info, success, warning
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId])
 }
