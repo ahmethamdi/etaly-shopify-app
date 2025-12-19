@@ -1,7 +1,17 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
-import { Text, Button } from "@shopify/polaris";
+import { Text, Button, Icon } from "@shopify/polaris";
+import {
+  DeliveryIcon,
+  PackageIcon,
+  ClockIcon,
+  PlanIcon,
+  ProductIcon,
+  CalendarIcon,
+  GlobeIcon,
+  StarFilledIcon
+} from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { useState } from "react";
@@ -128,6 +138,21 @@ export default function MessageTemplates() {
     return toneColors[tone] || toneColors.info;
   };
 
+  // Helper function to get icon component
+  const getIconComponent = (iconName: string | null) => {
+    const iconMap: Record<string, any> = {
+      "🚀": DeliveryIcon,
+      "📦": PackageIcon,
+      "⏰": ClockIcon,
+      "✈️": PlanIcon,
+      "🎄": ProductIcon,
+      "📅": CalendarIcon,
+      "🌍": GlobeIcon,
+      "⚡": StarFilledIcon,
+    };
+    return iconMap[iconName || ""] || PackageIcon;
+  };
+
   return (
     <div style={{ padding: "24px", background: "#f9fafb", minHeight: "100vh" }}>
       {/* Header */}
@@ -212,10 +237,9 @@ export default function MessageTemplates() {
                   justifyContent: "center",
                   marginBottom: "16px",
                   marginTop: template.isPro || isSelected ? "20px" : "0",
-                  fontSize: "24px",
                 }}
               >
-                {template.icon || "📄"}
+                <Icon source={getIconComponent(template.icon)} tone="base" />
               </div>
 
               {/* Title & Description */}
@@ -239,7 +263,7 @@ export default function MessageTemplates() {
                   gap: "8px",
                 }}
               >
-                <span style={{ fontSize: "16px" }}>{template.icon || "📄"}</span>
+                <Icon source={getIconComponent(template.icon)} tone="base" />
                 <Text as="span" variant="bodySm" fontWeight="medium">
                   <span style={{ color: toneColors.color }}>{template.message}</span>
                 </Text>
