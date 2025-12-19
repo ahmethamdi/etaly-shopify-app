@@ -1,118 +1,131 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
 import { Text, Button } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
+import { useState } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
 
-  const templates = [
-    {
-      id: "1",
-      icon: "⚡",
-      iconBg: "#d1fae5",
-      iconColor: "#10b981",
-      title: "Order Today, Delivered Tomorrow",
-      subtitle: "Same-day or next-day delivery",
-      message: "Order now – arrives tomorrow by 6 PM",
-      messageBg: "#d1fae5",
-      messageColor: "#10b981",
-      isPro: false,
-    },
-    {
-      id: "2",
-      icon: "🚚",
-      iconBg: "#dbeafe",
-      iconColor: "#2563eb",
-      title: "Standard Delivery Range",
-      subtitle: "Standard shipping",
-      message: "Delivery in 2-3 business days",
-      messageBg: "#dbeafe",
-      messageColor: "#2563eb",
-      isPro: false,
-    },
-    {
-      id: "3",
-      icon: "⏰",
-      iconBg: "#fef3c7",
-      iconColor: "#f59e0b",
-      title: "Cutoff Time Warning",
-      subtitle: "Urgency and cutoff times",
-      message: "Order within 4h 23m for delivery by Thursday",
-      messageBg: "#fef3c7",
-      messageColor: "#f59e0b",
-      isPro: false,
-    },
-    {
-      id: "4",
-      icon: "📦",
-      iconBg: "#dbeafe",
-      iconColor: "#2563eb",
-      title: "Ships Today Message",
-      subtitle: "Same-day shipping",
-      message: "Ships today if ordered before 16:00",
-      messageBg: "#dbeafe",
-      messageColor: "#2563eb",
-      isPro: false,
-    },
-    {
-      id: "5",
-      icon: "🎁",
-      iconBg: "#fecaca",
-      iconColor: "#dc2626",
-      title: "Holiday Shipping Notice",
-      subtitle: "Holiday season",
-      message: "Order by Dec 20 for Christmas delivery",
-      messageBg: "#fecaca",
-      messageColor: "#dc2626",
-      isPro: true,
-    },
-    {
-      id: "6",
-      icon: "⏸️",
-      iconBg: "#f3f4f6",
-      iconColor: "#6b7280",
-      title: "Weekend Delay Notice",
-      subtitle: "Weekend awareness",
-      message: "Weekend orders ship Monday",
-      messageBg: "#f3f4f6",
-      messageColor: "#6b7280",
-      isPro: true,
-    },
-    {
-      id: "7",
-      icon: "🚚",
-      iconBg: "#dbeafe",
-      iconColor: "#2563eb",
-      title: "International Shipping",
-      subtitle: "Cross-border shipping",
-      message: "International delivery: 5-10 business days",
-      messageBg: "#dbeafe",
-      messageColor: "#2563eb",
-      isPro: true,
-    },
-    {
-      id: "8",
-      icon: "⚡",
-      iconBg: "#fef3c7",
-      iconColor: "#f59e0b",
-      title: "Premium Fast Delivery",
-      subtitle: "Premium shipping options",
-      message: "⚡ Express delivery: Get it tomorrow",
-      messageBg: "#fef3c7",
-      messageColor: "#f59e0b",
-      isPro: true,
-    },
-  ];
+  // Get store
+  const store = await db.store.findUnique({
+    where: { shop: session.shop },
+  });
 
-  return {
-    shop: session.shop,
+  if (!store) {
+    return json({
+      templates: [],
+      activeTemplateId: null,
+      userPlan: "free",
+    });
+  }
+
+  // Get all templates
+  const templates = await db.messageTemplate.findMany({
+    where: {
+      OR: [
+        { isBuiltIn: true, storeId: null },
+        { storeId: store.id },
+      ],
+    },
+    orderBy: [
+      { isPro: "asc" },
+      { createdAt: "asc" },
+    ],
+  });
+
+  return json({
     templates,
-  };
+    activeTemplateId: store.activeTemplateId,
+    userPlan: store.plan || "free",
+  });
 };
 
+export async function action({ request }: ActionFunctionArgs) {
+  const { session } = await authenticate.admin(request);
+
+  try {
+    const formData = await request.formData();
+    const action = formData.get("action") as string;
+    const templateId = formData.get("templateId") as string;
+
+    // Get store
+    const store = await db.store.findUnique({
+      where: { shop: session.shop },
+    });
+
+    if (!store) {
+      return json({ success: false, error: "Store not found" }, { status: 404 });
+    }
+
+    // Get template
+    const template = await db.messageTemplate.findUnique({
+      where: { templateId },
+    });
+
+    if (!template) {
+      return json({ success: false, error: "Template not found" }, { status: 404 });
+    }
+
+    // Check Pro requirement
+    if (template.isPro && store.plan === "free") {
+      return json(
+        { success: false, code: "UPGRADE_REQUIRED", error: "This template requires a Pro plan" },
+        { status: 403 }
+      );
+    }
+
+    // Apply template
+    await db.store.update({
+      where: { id: store.id },
+      data: { activeTemplateId: templateId },
+    });
+
+    return json({
+      success: true,
+      message: "Template applied successfully",
+    });
+  } catch (error) {
+    console.error("Error applying template:", error);
+    return json({ success: false, error: "Failed to apply template" }, { status: 500 });
+  }
+}
+
 export default function MessageTemplates() {
-  const { templates } = useLoaderData<typeof loader>();
+  const { templates, activeTemplateId, userPlan } = useLoaderData<typeof loader>();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "submitting";
+
+  const [selectedTemplate, setSelectedTemplate] = useState(activeTemplateId);
+
+  const isProPlan = userPlan === "pro" || userPlan === "advanced";
+
+  const handleApplyTemplate = (templateId: string, isPro: boolean) => {
+    if (isPro && !isProPlan) {
+      window.location.href = "/app/plans";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("action", "apply");
+    formData.append("templateId", templateId);
+
+    submit(formData, { method: "post" });
+    setSelectedTemplate(templateId);
+  };
+
+  // Helper function to get tone colors
+  const getToneColors = (tone: string) => {
+    const toneColors: Record<string, { bg: string; color: string }> = {
+      info: { bg: "#dbeafe", color: "#2563eb" },
+      success: { bg: "#d1fae5", color: "#10b981" },
+      warning: { bg: "#fef3c7", color: "#f59e0b" },
+    };
+    return toneColors[tone] || toneColors.info;
+  };
 
   return (
     <div style={{ padding: "24px", background: "#f9fafb", minHeight: "100vh" }}>
@@ -128,160 +141,197 @@ export default function MessageTemplates() {
 
       {/* Templates Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", marginBottom: "24px" }}>
-        {templates.map((template) => (
-          <div
-            key={template.id}
-            style={{
-              background: "white",
-              borderRadius: "12px",
-              padding: "24px",
-              border: "1px solid #e5e7eb",
-              position: "relative",
-            }}
-          >
-            {/* Pro Badge */}
-            {template.isPro && (
+        {templates.map((template) => {
+          const toneColors = getToneColors(template.toneDefault);
+          const isSelected = selectedTemplate === template.templateId;
+          const isLocked = template.isPro && !isProPlan;
+
+          return (
+            <div
+              key={template.id}
+              style={{
+                background: "white",
+                borderRadius: "12px",
+                padding: "24px",
+                border: isSelected ? "2px solid #2563eb" : "1px solid #e5e7eb",
+                position: "relative",
+                opacity: isLocked ? 0.7 : 1,
+              }}
+            >
+              {/* Selected Badge */}
+              {isSelected && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "12px",
+                    left: "12px",
+                    background: "#10b981",
+                    color: "white",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                  }}
+                >
+                  SELECTED
+                </div>
+              )}
+
+              {/* Pro Badge */}
+              {template.isPro && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "12px",
+                    right: "12px",
+                    padding: "4px 12px",
+                    background: "#f59e0b",
+                    borderRadius: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  <span style={{ fontSize: "11px", fontWeight: "600", color: "white" }}>Pro</span>
+                </div>
+              )}
+
+              {/* Icon */}
               <div
                 style={{
-                  position: "absolute",
-                  top: "16px",
-                  right: "16px",
-                  padding: "4px 12px",
-                  background: "#f59e0b",
-                  borderRadius: "12px",
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  background: toneColors.bg,
                   display: "flex",
                   alignItems: "center",
-                  gap: "4px",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                  marginTop: template.isPro || isSelected ? "20px" : "0",
+                  fontSize: "24px",
                 }}
               >
-                <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-                <span style={{ fontSize: "11px", fontWeight: "600", color: "white" }}>Pro</span>
+                {template.icon || "📄"}
               </div>
-            )}
 
-            {/* Icon */}
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "8px",
-                background: template.iconBg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "16px",
-                fontSize: "24px",
-              }}
-            >
-              {template.icon}
-            </div>
-
-            {/* Title & Subtitle */}
-            <Text as="h3" variant="headingMd" fontWeight="semibold">
-              <span style={{ display: "block", marginBottom: "4px" }}>{template.title}</span>
-            </Text>
-            <Text as="p" variant="bodySm" tone="subdued">
-              <span style={{ display: "block", marginBottom: "16px" }}>{template.subtitle}</span>
-            </Text>
-
-            {/* Message Preview */}
-            <div
-              style={{
-                padding: "12px 16px",
-                borderRadius: "8px",
-                background: template.messageBg,
-                marginBottom: "16px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <span style={{ fontSize: "16px" }}>{template.icon}</span>
-              <Text as="span" variant="bodySm" fontWeight="medium">
-                <span style={{ color: template.messageColor }}>{template.message}</span>
+              {/* Title & Description */}
+              <Text as="h3" variant="headingMd" fontWeight="semibold">
+                <span style={{ display: "block", marginBottom: "4px" }}>{template.name}</span>
               </Text>
-            </div>
+              <Text as="p" variant="bodySm" tone="subdued">
+                <span style={{ display: "block", marginBottom: "16px" }}>{template.description}</span>
+              </Text>
 
-            {/* Button */}
-            {template.isPro ? (
-              <Button fullWidth disabled>
-                Upgrade to Use
+              {/* Message Preview */}
+              <div
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  background: toneColors.bg,
+                  border: `1px solid ${toneColors.color}`,
+                  marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "16px" }}>{template.icon || "📄"}</span>
+                <Text as="span" variant="bodySm" fontWeight="medium">
+                  <span style={{ color: toneColors.color }}>{template.message}</span>
+                </Text>
+              </div>
+
+              {/* Button */}
+              <Button
+                fullWidth
+                variant={isSelected ? "plain" : "primary"}
+                disabled={isLoading || isSelected}
+                onClick={() => handleApplyTemplate(template.templateId, template.isPro)}
+              >
+                {isLocked ? "Upgrade to Use" : isSelected ? "Selected" : "Use Template"}
               </Button>
-            ) : (
-              <Button variant="primary" fullWidth>
-                Use Template
-              </Button>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Unlock Pro Templates Banner */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
-          borderRadius: "16px",
-          padding: "40px",
-          marginBottom: "24px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Text as="h2" variant="headingLg" fontWeight="bold">
-            <span style={{ color: "white", display: "block", marginBottom: "8px" }}>
-              Unlock Pro Templates
-            </span>
-          </Text>
-          <Text as="p" variant="bodyMd">
-            <span style={{ color: "rgba(255, 255, 255, 0.9)", display: "block", marginBottom: "20px" }}>
-              Get access to premium message templates, seasonal variations, and custom branding options.
-            </span>
-          </Text>
-          <div style={{ display: "flex", gap: "12px" }}>
-            <button
-              style={{
-                padding: "12px 24px",
-                background: "white",
-                border: "none",
-                borderRadius: "8px",
-                color: "#2563eb",
-                fontSize: "14px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Upgrade to Pro
-            </button>
-            <button
-              style={{
-                padding: "12px 24px",
-                background: "transparent",
-                border: "2px solid white",
-                borderRadius: "8px",
-                color: "white",
-                fontSize: "14px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Learn More
-            </button>
-          </div>
-        </div>
+      {/* Unlock Pro Templates Banner - Only for Free users */}
+      {!isProPlan && (
         <div
           style={{
-            width: "120px",
-            height: "120px",
-            background: "rgba(255, 255, 255, 0.2)",
+            background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
             borderRadius: "16px",
-            marginLeft: "40px",
+            padding: "40px",
+            marginBottom: "24px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
-        />
-      </div>
+        >
+          <div style={{ flex: 1 }}>
+            <Text as="h2" variant="headingLg" fontWeight="bold">
+              <span style={{ color: "white", display: "block", marginBottom: "8px" }}>
+                Unlock Pro Templates
+              </span>
+            </Text>
+            <Text as="p" variant="bodyMd">
+              <span style={{ color: "rgba(255, 255, 255, 0.9)", display: "block", marginBottom: "20px" }}>
+                Get access to premium message templates, seasonal variations, and custom branding options.
+              </span>
+            </Text>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                onClick={() => (window.location.href = "/app/plans")}
+                style={{
+                  padding: "12px 24px",
+                  background: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#2563eb",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                Upgrade to Pro
+              </button>
+              <button
+                onClick={() => window.open("https://etaly.app/docs/templates", "_blank")}
+                style={{
+                  padding: "12px 24px",
+                  background: "transparent",
+                  border: "2px solid white",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                Learn More
+              </button>
+            </div>
+          </div>
+          <div
+            style={{
+              width: "120px",
+              height: "120px",
+              background: "rgba(255, 255, 255, 0.2)",
+              borderRadius: "16px",
+              marginLeft: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "48px",
+            }}
+          >
+            ⭐
+          </div>
+        </div>
+      )}
 
       {/* Create Custom Template */}
       <div

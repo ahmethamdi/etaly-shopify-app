@@ -44,6 +44,9 @@ model Store {
   excludeWeekends   Boolean  @default(true)
   skipHolidays      Boolean  @default(true)
 
+  // Active message template
+  activeTemplateId  String?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -53,6 +56,7 @@ model Store {
   holidays          Holiday[]
   analytics         Analytics[]
   cartCheckoutSettings CartCheckoutSettings?
+  messageTemplates  MessageTemplate[]
 }
 
 // App settings per store
@@ -198,4 +202,35 @@ model CartCheckoutSettings {
   updatedAt         DateTime @updatedAt
 
   @@index([storeId])
+}
+
+// Message Templates for ETA messages
+model MessageTemplate {
+  id                String   @id @default(cuid())
+  storeId           String?
+  store             Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Template details
+  templateId        String   @unique // e.g., "standard_delivery_range"
+  name              String
+  description       String
+  icon              String?  // emoji or icon name
+
+  // Template content
+  message           String   // Message with variables: {eta_date}, {eta_min}, etc.
+  toneDefault       String   @default("info") // info, success, warning
+
+  // Features
+  isPro             Boolean  @default(false)
+  isBuiltIn         Boolean  @default(true)  // System templates vs custom
+  supportsCountdown Boolean  @default(false)
+
+  // Where this template can be used
+  placements        String   @default("product,cart,checkout") // JSON array as string
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([templateId])
 }
