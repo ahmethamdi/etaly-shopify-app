@@ -105,7 +105,8 @@ export default function MessageTemplates() {
 
   const handleApplyTemplate = (templateId: string, isPro: boolean) => {
     if (isPro && !isProPlan) {
-      window.location.href = "/app/plans";
+      // TODO: Create plans page
+      alert("This template requires a Pro plan. Upgrade feature coming soon!");
       return;
     }
 
@@ -284,7 +285,7 @@ export default function MessageTemplates() {
             </Text>
             <div style={{ display: "flex", gap: "12px" }}>
               <button
-                onClick={() => (window.location.href = "/app/plans")}
+                onClick={() => alert("Pro plan upgrade coming soon!")}
                 style={{
                   padding: "12px 24px",
                   background: "white",
@@ -299,7 +300,7 @@ export default function MessageTemplates() {
                 Upgrade to Pro
               </button>
               <button
-                onClick={() => window.open("https://etaly.app/docs/templates", "_blank")}
+                onClick={() => alert("Documentation coming soon!")}
                 style={{
                   padding: "12px 24px",
                   background: "transparent",
@@ -351,7 +352,7 @@ export default function MessageTemplates() {
             Need a specific message format? Create your own template with custom variables and styling.
           </span>
         </Text>
-        <Button variant="primary">Create Custom Template</Button>
+        <Button variant="primary" onClick={() => alert("Custom template creation coming soon!")}>Create Custom Template</Button>
       </div>
 
       {/* Feature Cards */}
