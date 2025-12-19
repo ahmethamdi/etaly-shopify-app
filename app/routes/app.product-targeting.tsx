@@ -1,13 +1,13 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
-import { Text, Button, Modal, TextField } from "@shopify/polaris";
+import { Text, Button, Modal, TextField, Spinner, Thumbnail, Checkbox } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { useState, useEffect } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
 
   // Get store
   const store = await db.store.findUnique({
@@ -29,11 +29,83 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
+  // Fetch products from Shopify using GraphQL
+  const productsQuery = `
+    query {
+      products(first: 50) {
+        edges {
+          node {
+            id
+            title
+            featuredImage {
+              url
+              altText
+            }
+            priceRangeV2 {
+              minVariantPrice {
+                amount
+                currencyCode
+              }
+            }
+            totalInventory
+            status
+            tags
+          }
+        }
+      }
+    }
+  `;
+
+  const productsResponse = await admin.graphql(productsQuery);
+  const productsData = await productsResponse.json();
+
+  const products = productsData.data.products.edges.map((edge: any) => ({
+    id: edge.node.id.replace('gid://shopify/Product/', ''),
+    title: edge.node.title,
+    image: edge.node.featuredImage?.url || null,
+    price: edge.node.priceRangeV2.minVariantPrice.amount,
+    currency: edge.node.priceRangeV2.minVariantPrice.currencyCode,
+    inventory: edge.node.totalInventory || 0,
+    status: edge.node.status,
+    tags: edge.node.tags || [],
+  }));
+
+  // Fetch collections from Shopify
+  const collectionsQuery = `
+    query {
+      collections(first: 50) {
+        edges {
+          node {
+            id
+            title
+            productsCount
+            image {
+              url
+              altText
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const collectionsResponse = await admin.graphql(collectionsQuery);
+  const collectionsData = await collectionsResponse.json();
+
+  const collections = collectionsData.data.collections.edges.map((edge: any) => ({
+    id: edge.node.id.replace('gid://shopify/Collection/', ''),
+    title: edge.node.title,
+    productsCount: edge.node.productsCount,
+    image: edge.node.image?.url || null,
+  }));
+
   return json({
     shop: session.shop,
     targetingMode: settings.targetingMode || "all",
     targetTags: settings.targetTags ? JSON.parse(settings.targetTags) : [],
     excludedProducts: settings.excludedProducts ? JSON.parse(settings.excludedProducts) : [],
+    products,
+    collections,
   });
 };
 
@@ -84,8 +156,11 @@ export default function ProductTargeting() {
   const [targetingMode, setTargetingMode] = useState(loaderData.targetingMode);
   const [activeTags, setActiveTags] = useState<string[]>(loaderData.targetTags);
   const [excludedProducts, setExcludedProducts] = useState<string[]>(loaderData.excludedProducts);
-  const [showExcludeModal, setShowExcludeModal] = useState(false);
-  const [productIdInput, setProductIdInput] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
 
   // Available tags
   const availableTags = [
@@ -99,6 +174,16 @@ export default function ProductTargeting() {
     "Clearance",
   ];
 
+  // Filter products based on search
+  const filteredProducts = loaderData.products.filter((product: any) =>
+    product.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Filter collections based on search
+  const filteredCollections = loaderData.collections.filter((collection: any) =>
+    collection.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Toggle tag
   const toggleTag = (tagName: string) => {
     if (activeTags.includes(tagName)) {
@@ -108,13 +193,35 @@ export default function ProductTargeting() {
     }
   };
 
-  // Add excluded product
-  const addExcludedProduct = () => {
-    if (productIdInput && !excludedProducts.includes(productIdInput)) {
-      setExcludedProducts([...excludedProducts, productIdInput]);
-      setProductIdInput("");
-      setShowExcludeModal(false);
+  // Toggle product selection
+  const toggleProduct = (productId: string) => {
+    if (selectedProducts.includes(productId)) {
+      setSelectedProducts(selectedProducts.filter((id) => id !== productId));
+    } else {
+      setSelectedProducts([...selectedProducts, productId]);
     }
+  };
+
+  // Toggle collection selection
+  const toggleCollection = (collectionId: string) => {
+    if (selectedCollections.includes(collectionId)) {
+      setSelectedCollections(selectedCollections.filter((id) => id !== collectionId));
+    } else {
+      setSelectedCollections([...selectedCollections, collectionId]);
+    }
+  };
+
+  // Add excluded product
+  const addExcludedProducts = () => {
+    const newExcluded = [...excludedProducts];
+    selectedProducts.forEach((productId) => {
+      if (!newExcluded.includes(productId)) {
+        newExcluded.push(productId);
+      }
+    });
+    setExcludedProducts(newExcluded);
+    setSelectedProducts([]);
+    setShowProductModal(false);
   };
 
   // Remove excluded product
@@ -126,11 +233,15 @@ export default function ProductTargeting() {
   const selectAllProducts = () => {
     setTargetingMode("all");
     setActiveTags([]);
+    setSelectedProducts([]);
+    setExcludedProducts([]);
   };
 
   const clearSelection = () => {
     setActiveTags([]);
     setExcludedProducts([]);
+    setSelectedProducts([]);
+    setSelectedCollections([]);
   };
 
   // Save settings
@@ -155,6 +266,11 @@ export default function ProductTargeting() {
       default:
         return "All Products";
     }
+  };
+
+  // Get product by ID
+  const getProductById = (productId: string) => {
+    return loaderData.products.find((p: any) => p.id === productId);
   };
 
   return (
@@ -230,7 +346,7 @@ export default function ProductTargeting() {
                       <span style={{ color: targetingMode === "all" ? "#2563eb" : "#374151" }}>All Products</span>
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
-                      Show delivery ETA on all product pages in your store
+                      Show delivery ETA on all {loaderData.products.length} products in your store
                     </Text>
                   </div>
                 </div>
@@ -272,14 +388,14 @@ export default function ProductTargeting() {
                     <circle cx="9" cy="9" r="7" />
                     <path d="M14 14l7 7" />
                   </svg>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <Text as="p" variant="bodyMd" fontWeight="medium">
                       <span style={{ color: targetingMode === "specific" ? "#2563eb" : "#374151" }}>
                         Specific Products
                       </span>
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
-                      Manually select individual products
+                      Manually select individual products from your catalog
                     </Text>
                   </div>
                 </div>
@@ -330,7 +446,7 @@ export default function ProductTargeting() {
                       </span>
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
-                      Target entire collections of products
+                      Target entire collections ({loaderData.collections.length} available)
                     </Text>
                   </div>
                 </div>
@@ -414,42 +530,84 @@ export default function ProductTargeting() {
             {/* Excluded products list */}
             {excludedProducts.length > 0 && (
               <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                {excludedProducts.map((productId) => (
-                  <div
-                    key={productId}
-                    style={{
-                      padding: "12px 16px",
-                      background: "#f9fafb",
-                      borderRadius: "6px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text as="p" variant="bodySm">
-                      Product ID: {productId}
-                    </Text>
-                    <button
-                      onClick={() => removeExcludedProduct(productId)}
+                {excludedProducts.map((productId) => {
+                  const product = getProductById(productId);
+                  return (
+                    <div
+                      key={productId}
                       style={{
-                        padding: "4px 8px",
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "#dc2626",
+                        padding: "12px",
+                        background: "#f9fafb",
+                        borderRadius: "6px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "12px",
                       }}
                     >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
-                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+                        {product?.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.title}
+                            style={{ width: "40px", height: "40px", borderRadius: "4px", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "4px",
+                              background: "#e5e7eb",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <svg width="20" height="20" fill="none" stroke="#9ca3af" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                          </div>
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <Text as="p" variant="bodySm" fontWeight="medium">
+                            {product?.title || `Product #${productId}`}
+                          </Text>
+                          {product && (
+                            <Text as="p" variant="bodySm" tone="subdued">
+                              {product.currency} {parseFloat(product.price).toFixed(2)}
+                            </Text>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeExcludedProduct(productId)}
+                        style={{
+                          padding: "8px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#dc2626",
+                          borderRadius: "4px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             <button
-              onClick={() => setShowExcludeModal(true)}
+              onClick={() => setShowProductModal(true)}
               style={{
                 width: "100%",
                 marginTop: "16px",
@@ -462,9 +620,10 @@ export default function ProductTargeting() {
                 fontSize: "14px",
                 textAlign: "center",
                 transition: "all 0.2s",
+                fontWeight: "500",
               }}
             >
-              + Add Excluded Products
+              + Browse & Exclude Products
             </button>
           </div>
         </div>
@@ -490,6 +649,15 @@ export default function ProductTargeting() {
                 </Text>
                 <Text as="p" variant="bodyMd" fontWeight="medium">
                   {getModeText()}
+                </Text>
+              </div>
+              <div style={{ height: "1px", background: "#e5e7eb" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  Total Products
+                </Text>
+                <Text as="p" variant="bodyMd" fontWeight="medium">
+                  {loaderData.products.length}
                 </Text>
               </div>
               <div style={{ height: "1px", background: "#e5e7eb" }} />
@@ -641,38 +809,127 @@ export default function ProductTargeting() {
         </div>
       </div>
 
-      {/* Exclude Product Modal */}
+      {/* Browse Products Modal */}
       <Modal
-        open={showExcludeModal}
+        open={showProductModal}
         onClose={() => {
-          setShowExcludeModal(false);
-          setProductIdInput("");
+          setShowProductModal(false);
+          setSelectedProducts([]);
+          setSearchQuery("");
         }}
-        title="Add Excluded Product"
+        title={`Browse Products (${loaderData.products.length})`}
         primaryAction={{
-          content: "Add Product",
-          onAction: addExcludedProduct,
-          disabled: !productIdInput,
+          content: `Exclude ${selectedProducts.length} Product${selectedProducts.length !== 1 ? 's' : ''}`,
+          onAction: addExcludedProducts,
+          disabled: selectedProducts.length === 0,
         }}
         secondaryActions={[
           {
             content: "Cancel",
             onAction: () => {
-              setShowExcludeModal(false);
-              setProductIdInput("");
+              setShowProductModal(false);
+              setSelectedProducts([]);
+              setSearchQuery("");
             },
           },
         ]}
       >
         <Modal.Section>
-          <TextField
-            label="Product ID"
-            value={productIdInput}
-            onChange={setProductIdInput}
-            autoComplete="off"
-            placeholder="Enter Shopify Product ID"
-            helpText="You can find the product ID in your Shopify admin URL when editing a product"
-          />
+          <div style={{ marginBottom: "16px" }}>
+            <TextField
+              label=""
+              value={searchQuery}
+              onChange={setSearchQuery}
+              autoComplete="off"
+              placeholder="Search products..."
+              prefix={
+                <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+              }
+            />
+          </div>
+
+          <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+            {filteredProducts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  No products found
+                </Text>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {filteredProducts.map((product: any) => (
+                  <div
+                    key={product.id}
+                    onClick={() => toggleProduct(product.id)}
+                    style={{
+                      padding: "12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      background: selectedProducts.includes(product.id) ? "#eff6ff" : "white",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={() => toggleProduct(product.id)}
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor: "pointer",
+                          accentColor: "#2563eb",
+                        }}
+                      />
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          style={{ width: "48px", height: "48px", borderRadius: "6px", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "6px",
+                            background: "#e5e7eb",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <svg width="24" height="24" fill="none" stroke="#9ca3af" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                        </div>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <Text as="p" variant="bodyMd" fontWeight="medium">
+                          {product.title}
+                        </Text>
+                        <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "4px" }}>
+                          <Text as="p" variant="bodySm" tone="subdued">
+                            {product.currency} {parseFloat(product.price).toFixed(2)}
+                          </Text>
+                          <span style={{ color: "#d1d5db" }}>•</span>
+                          <Text as="p" variant="bodySm" tone="subdued">
+                            Stock: {product.inventory}
+                          </Text>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </Modal.Section>
       </Modal>
     </div>
