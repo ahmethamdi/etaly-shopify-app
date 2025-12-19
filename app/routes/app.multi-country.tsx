@@ -1,33 +1,34 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
-import { Text, Button, Badge, Modal, TextField, Select } from "@shopify/polaris";
+import { Text, Button, Badge, Modal, TextField, Select, Icon } from "@shopify/polaris";
+import { GlobeIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { useState } from "react";
 
-// Country list with flags and timezones
+// Country list with timezones
 const COUNTRIES = [
-  { code: "DE", name: "Germany", flag: "🇩🇪", timezone: "Europe/Berlin" },
-  { code: "AT", name: "Austria", flag: "🇦🇹", timezone: "Europe/Vienna" },
-  { code: "CH", name: "Switzerland", flag: "🇨🇭", timezone: "Europe/Zurich" },
-  { code: "GB", name: "United Kingdom", flag: "🇬🇧", timezone: "Europe/London" },
-  { code: "FR", name: "France", flag: "🇫🇷", timezone: "Europe/Paris" },
-  { code: "IT", name: "Italy", flag: "🇮🇹", timezone: "Europe/Rome" },
-  { code: "ES", name: "Spain", flag: "🇪🇸", timezone: "Europe/Madrid" },
-  { code: "NL", name: "Netherlands", flag: "🇳🇱", timezone: "Europe/Amsterdam" },
-  { code: "BE", name: "Belgium", flag: "🇧🇪", timezone: "Europe/Brussels" },
-  { code: "PL", name: "Poland", flag: "🇵🇱", timezone: "Europe/Warsaw" },
-  { code: "SE", name: "Sweden", flag: "🇸🇪", timezone: "Europe/Stockholm" },
-  { code: "NO", name: "Norway", flag: "🇳🇴", timezone: "Europe/Oslo" },
-  { code: "DK", name: "Denmark", flag: "🇩🇰", timezone: "Europe/Copenhagen" },
-  { code: "FI", name: "Finland", flag: "🇫🇮", timezone: "Europe/Helsinki" },
-  { code: "US", name: "United States", flag: "🇺🇸", timezone: "America/New_York" },
-  { code: "CA", name: "Canada", flag: "🇨🇦", timezone: "America/Toronto" },
-  { code: "AU", name: "Australia", flag: "🇦🇺", timezone: "Australia/Sydney" },
-  { code: "NZ", name: "New Zealand", flag: "🇳🇿", timezone: "Pacific/Auckland" },
-  { code: "JP", name: "Japan", flag: "🇯🇵", timezone: "Asia/Tokyo" },
-  { code: "CN", name: "China", flag: "🇨🇳", timezone: "Asia/Shanghai" },
+  { code: "DE", name: "Germany", timezone: "Europe/Berlin" },
+  { code: "AT", name: "Austria", timezone: "Europe/Vienna" },
+  { code: "CH", name: "Switzerland", timezone: "Europe/Zurich" },
+  { code: "GB", name: "United Kingdom", timezone: "Europe/London" },
+  { code: "FR", name: "France", timezone: "Europe/Paris" },
+  { code: "IT", name: "Italy", timezone: "Europe/Rome" },
+  { code: "ES", name: "Spain", timezone: "Europe/Madrid" },
+  { code: "NL", name: "Netherlands", timezone: "Europe/Amsterdam" },
+  { code: "BE", name: "Belgium", timezone: "Europe/Brussels" },
+  { code: "PL", name: "Poland", timezone: "Europe/Warsaw" },
+  { code: "SE", name: "Sweden", timezone: "Europe/Stockholm" },
+  { code: "NO", name: "Norway", timezone: "Europe/Oslo" },
+  { code: "DK", name: "Denmark", timezone: "Europe/Copenhagen" },
+  { code: "FI", name: "Finland", timezone: "Europe/Helsinki" },
+  { code: "US", name: "United States", timezone: "America/New_York" },
+  { code: "CA", name: "Canada", timezone: "America/Toronto" },
+  { code: "AU", name: "Australia", timezone: "Australia/Sydney" },
+  { code: "NZ", name: "New Zealand", timezone: "Pacific/Auckland" },
+  { code: "JP", name: "Japan", timezone: "Asia/Tokyo" },
+  { code: "CN", name: "China", timezone: "Asia/Shanghai" },
 ];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -75,7 +76,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return {
       code: country.code,
       name: country.name,
-      flag: country.flag,
       timezone: country.timezone,
       rulesCount: rules.length,
       isActive: rules.length > 0 && rules.some(r => r.isActive),
@@ -344,7 +344,19 @@ export default function MultiCountry() {
                         <path d="M6 9l6 6 6-6" />
                       </svg>
                     </button>
-                    <span style={{ fontSize: "24px" }}>{country.flag}</span>
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "8px",
+                        background: "#dbeafe",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon source={GlobeIcon} tone="base" />
+                    </div>
                     <div>
                       <Text as="h3" variant="headingMd" fontWeight="semibold">
                         {country.name}
@@ -517,7 +529,19 @@ export default function MultiCountry() {
                       <path d="M9 18l6-6-6-6" />
                     </svg>
                   </button>
-                  <span style={{ fontSize: "24px" }}>{country.flag}</span>
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      background: "#dbeafe",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon source={GlobeIcon} tone="base" />
+                  </div>
                   <div>
                     <Text as="h3" variant="headingMd" fontWeight="semibold">
                       {country.name}
@@ -660,13 +684,37 @@ export default function MultiCountry() {
             </Text>
             <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "20px" }}>🇪🇺</span>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "6px",
+                    background: "#dbeafe",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon source={GlobeIcon} tone="base" />
+                </div>
                 <Text as="p" variant="bodyMd">
                   European Union ({activeCountries.filter(c => ["DE", "AT", "FR", "IT", "ES", "NL", "BE", "PL", "SE", "DK", "FI"].includes(c.code)).length} countries active)
                 </Text>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "20px" }}>🌍</span>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "6px",
+                    background: "#d1fae5",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon source={GlobeIcon} tone="base" />
+                </div>
                 <Text as="p" variant="bodyMd">
                   Worldwide ({activeCountries.length}/{countries.length} countries)
                 </Text>
@@ -705,7 +753,7 @@ export default function MultiCountry() {
             options={[
               { label: "Select a country", value: "" },
               ...COUNTRIES.map((c) => ({
-                label: `${c.flag} ${c.name}`,
+                label: c.name,
                 value: c.code,
               })),
             ]}

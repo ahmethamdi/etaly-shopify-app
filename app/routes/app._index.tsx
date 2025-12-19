@@ -14,6 +14,9 @@ import {
   ProductIcon,
   CartIcon,
   ChartVerticalIcon,
+  PackageIcon,
+  DeliveryIcon,
+  PlanIcon,
 } from "@shopify/polaris-icons";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -324,13 +327,6 @@ export default function Dashboard() {
             </Text>
             <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
               {shippingMethods.map((method) => {
-                const iconColors: Record<string, string> = {
-                  DHL: "#FFCC00",
-                  DPD: "#DC0032",
-                  UPS: "#FFB500",
-                  Custom: "#6b7280"
-                };
-
                 const iconBgColors: Record<string, string> = {
                   DHL: "#FFF9E6",
                   DPD: "#FFE6EC",
@@ -349,13 +345,16 @@ export default function Dashboard() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        color: iconColors[method.name] || "#6b7280"
                       }}>
-                        {method.name === "DHL" ? "📦" :
-                         method.name === "DPD" ? "🚚" :
-                         method.name === "UPS" ? "📮" : "✈️"}
+                        <Icon
+                          source={
+                            method.name === "DHL" ? PackageIcon :
+                            method.name === "DPD" ? DeliveryIcon :
+                            method.name === "UPS" ? PackageIcon :
+                            PlanIcon
+                          }
+                          tone="base"
+                        />
                       </div>
                       <Text as="p" variant="bodyMd">
                         {method.name}

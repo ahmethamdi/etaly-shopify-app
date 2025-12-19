@@ -1,7 +1,14 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { Text, Button } from "@shopify/polaris";
+import { Text, Button, Icon } from "@shopify/polaris";
+import {
+  ViewIcon,
+  CursorIcon,
+  OrderIcon,
+  ChevronUpIcon,
+  GlobeIcon
+} from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
@@ -138,7 +145,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       : 0;
 
     return {
-      flag: getCountryFlag(stat.countryCode || ""),
       name: stat.countryCode || "Unknown",
       count: stat._count.id.toString(),
       percentage: `${percentage}%`,
@@ -158,27 +164,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 };
 
-// Helper function to get country flag emoji
-function getCountryFlag(countryCode: string): string {
-  const flags: Record<string, string> = {
-    DE: "🇩🇪",
-    AT: "🇦🇹",
-    CH: "🇨🇭",
-    US: "🇺🇸",
-    GB: "🇬🇧",
-    FR: "🇫🇷",
-    IT: "🇮🇹",
-    ES: "🇪🇸",
-  };
-  return flags[countryCode] || "🌍";
-}
-
 export default function Analytics() {
   const { stats, topRules, countries } = useLoaderData<typeof loader>();
 
   const statsCards = [
     {
-      icon: "👁️",
+      IconComponent: ViewIcon,
       iconBg: "#dbeafe",
       value: stats.totalImpressions.toLocaleString(),
       label: "Total Impressions",
@@ -187,7 +178,7 @@ export default function Analytics() {
       changeColor: "#10b981",
     },
     {
-      icon: "👆",
+      IconComponent: CursorIcon,
       iconBg: "#d1fae5",
       value: stats.clickEvents.toLocaleString(),
       label: "Click Events",
@@ -196,7 +187,7 @@ export default function Analytics() {
       changeColor: "#10b981",
     },
     {
-      icon: "🛒",
+      IconComponent: OrderIcon,
       iconBg: "#fef3c7",
       value: stats.conversions.toLocaleString(),
       label: "Conversions",
@@ -205,7 +196,7 @@ export default function Analytics() {
       changeColor: "#10b981",
     },
     {
-      icon: "📈",
+      IconComponent: ChevronUpIcon,
       iconBg: "#e0e7ff",
       value: stats.totalImpressions > 0 ? `${((stats.conversions / stats.totalImpressions) * 100).toFixed(1)}%` : "0%",
       label: "Conversion Rate",
@@ -249,10 +240,9 @@ export default function Analytics() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "20px",
                 }}
               >
-                {stat.icon}
+                <Icon source={stat.IconComponent} tone="base" />
               </div>
               <span
                 style={{
@@ -527,7 +517,19 @@ export default function Analytics() {
               <div key={index}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "20px" }}>{country.flag}</span>
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "4px",
+                        background: "#2563eb",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon source={GlobeIcon} tone="base" />
+                    </div>
                     <Text as="p" variant="bodyMd" fontWeight="medium">
                       {country.name}
                     </Text>

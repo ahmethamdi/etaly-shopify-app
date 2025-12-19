@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { Text } from "@shopify/polaris";
+import { Text, Icon } from "@shopify/polaris";
+import { StarFilledIcon, StarIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -18,7 +19,7 @@ export default function PlansBilling() {
     {
       id: "free",
       name: "Free",
-      icon: "⚡",
+      IconComponent: StarIcon,
       iconBg: "#f3f4f6",
       iconColor: "#6b7280",
       price: "€0",
@@ -44,7 +45,7 @@ export default function PlansBilling() {
     {
       id: "pro",
       name: "Pro",
-      icon: "👑",
+      IconComponent: StarFilledIcon,
       iconBg: "#2563eb",
       iconColor: "#ffffff",
       price: "€19.99",
@@ -181,10 +182,9 @@ export default function PlansBilling() {
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: "20px",
-                fontSize: "28px",
               }}
             >
-              {plan.icon}
+              <Icon source={plan.IconComponent || StarIcon} tone="base" />
             </div>
 
             {/* Plan Name */}
@@ -381,10 +381,9 @@ export default function PlansBilling() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "28px",
             }}
           >
-            👑
+            <Icon source={StarFilledIcon} tone="base" />
           </div>
 
           {/* Plan Info */}
