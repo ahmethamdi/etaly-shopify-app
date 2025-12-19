@@ -132,6 +132,7 @@ export default function Holidays() {
   // Settings state
   const [excludeWeekends, setExcludeWeekends] = useState(initialExcludeWeekends);
   const [skipHolidays, setSkipHolidays] = useState(initialSkipHolidays);
+  const [selectedCountry, setSelectedCountry] = useState("DE");
 
   // Update settings state when loader data changes
   useEffect(() => {
@@ -253,6 +254,229 @@ export default function Holidays() {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
+
+  // Comprehensive country list with ISO codes
+  const countries = [
+    { code: "AF", name: "Afghanistan" },
+    { code: "AL", name: "Albania" },
+    { code: "DZ", name: "Algeria" },
+    { code: "AR", name: "Argentina" },
+    { code: "AM", name: "Armenia" },
+    { code: "AU", name: "Australia" },
+    { code: "AT", name: "Austria" },
+    { code: "AZ", name: "Azerbaijan" },
+    { code: "BH", name: "Bahrain" },
+    { code: "BD", name: "Bangladesh" },
+    { code: "BY", name: "Belarus" },
+    { code: "BE", name: "Belgium" },
+    { code: "BZ", name: "Belize" },
+    { code: "BO", name: "Bolivia" },
+    { code: "BA", name: "Bosnia and Herzegovina" },
+    { code: "BR", name: "Brazil" },
+    { code: "BG", name: "Bulgaria" },
+    { code: "KH", name: "Cambodia" },
+    { code: "CA", name: "Canada" },
+    { code: "CL", name: "Chile" },
+    { code: "CN", name: "China" },
+    { code: "CO", name: "Colombia" },
+    { code: "CR", name: "Costa Rica" },
+    { code: "HR", name: "Croatia" },
+    { code: "CU", name: "Cuba" },
+    { code: "CY", name: "Cyprus" },
+    { code: "CZ", name: "Czech Republic" },
+    { code: "DK", name: "Denmark" },
+    { code: "DO", name: "Dominican Republic" },
+    { code: "EC", name: "Ecuador" },
+    { code: "EG", name: "Egypt" },
+    { code: "SV", name: "El Salvador" },
+    { code: "EE", name: "Estonia" },
+    { code: "ET", name: "Ethiopia" },
+    { code: "FI", name: "Finland" },
+    { code: "FR", name: "France" },
+    { code: "GE", name: "Georgia" },
+    { code: "DE", name: "Germany" },
+    { code: "GR", name: "Greece" },
+    { code: "GT", name: "Guatemala" },
+    { code: "HN", name: "Honduras" },
+    { code: "HK", name: "Hong Kong" },
+    { code: "HU", name: "Hungary" },
+    { code: "IS", name: "Iceland" },
+    { code: "IN", name: "India" },
+    { code: "ID", name: "Indonesia" },
+    { code: "IR", name: "Iran" },
+    { code: "IQ", name: "Iraq" },
+    { code: "IE", name: "Ireland" },
+    { code: "IL", name: "Israel" },
+    { code: "IT", name: "Italy" },
+    { code: "JM", name: "Jamaica" },
+    { code: "JP", name: "Japan" },
+    { code: "JO", name: "Jordan" },
+    { code: "KZ", name: "Kazakhstan" },
+    { code: "KE", name: "Kenya" },
+    { code: "KW", name: "Kuwait" },
+    { code: "LV", name: "Latvia" },
+    { code: "LB", name: "Lebanon" },
+    { code: "LY", name: "Libya" },
+    { code: "LT", name: "Lithuania" },
+    { code: "LU", name: "Luxembourg" },
+    { code: "MY", name: "Malaysia" },
+    { code: "MT", name: "Malta" },
+    { code: "MX", name: "Mexico" },
+    { code: "MD", name: "Moldova" },
+    { code: "MA", name: "Morocco" },
+    { code: "NP", name: "Nepal" },
+    { code: "NL", name: "Netherlands" },
+    { code: "NZ", name: "New Zealand" },
+    { code: "NI", name: "Nicaragua" },
+    { code: "NG", name: "Nigeria" },
+    { code: "NO", name: "Norway" },
+    { code: "OM", name: "Oman" },
+    { code: "PK", name: "Pakistan" },
+    { code: "PA", name: "Panama" },
+    { code: "PY", name: "Paraguay" },
+    { code: "PE", name: "Peru" },
+    { code: "PH", name: "Philippines" },
+    { code: "PL", name: "Poland" },
+    { code: "PT", name: "Portugal" },
+    { code: "QA", name: "Qatar" },
+    { code: "RO", name: "Romania" },
+    { code: "RU", name: "Russia" },
+    { code: "SA", name: "Saudi Arabia" },
+    { code: "RS", name: "Serbia" },
+    { code: "SG", name: "Singapore" },
+    { code: "SK", name: "Slovakia" },
+    { code: "SI", name: "Slovenia" },
+    { code: "ZA", name: "South Africa" },
+    { code: "KR", name: "South Korea" },
+    { code: "ES", name: "Spain" },
+    { code: "LK", name: "Sri Lanka" },
+    { code: "SE", name: "Sweden" },
+    { code: "CH", name: "Switzerland" },
+    { code: "SY", name: "Syria" },
+    { code: "TW", name: "Taiwan" },
+    { code: "TH", name: "Thailand" },
+    { code: "TN", name: "Tunisia" },
+    { code: "TR", name: "Turkey" },
+    { code: "UA", name: "Ukraine" },
+    { code: "AE", name: "United Arab Emirates" },
+    { code: "GB", name: "United Kingdom" },
+    { code: "US", name: "United States" },
+    { code: "UY", name: "Uruguay" },
+    { code: "VE", name: "Venezuela" },
+    { code: "VN", name: "Vietnam" },
+    { code: "YE", name: "Yemen" },
+  ];
+
+  // Preset holidays for popular countries (2025-2026)
+  const holidayPresets: { [key: string]: { name: string; month: number; day: number }[] } = {
+    DE: [ // Germany
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "German Unity Day", month: 10, day: 3 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    AT: [ // Austria
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Epiphany", month: 1, day: 6 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Corpus Christi", month: 6, day: 19 },
+      { name: "Assumption Day", month: 8, day: 15 },
+      { name: "National Day", month: 10, day: 26 },
+      { name: "All Saints' Day", month: 11, day: 1 },
+      { name: "Immaculate Conception", month: 12, day: 8 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "St. Stephen's Day", month: 12, day: 26 },
+    ],
+    GB: [ // United Kingdom
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Early May Bank Holiday", month: 5, day: 5 },
+      { name: "Spring Bank Holiday", month: 5, day: 26 },
+      { name: "Summer Bank Holiday", month: 8, day: 25 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    US: [ // United States
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Martin Luther King Jr. Day", month: 1, day: 20 },
+      { name: "Presidents' Day", month: 2, day: 17 },
+      { name: "Memorial Day", month: 5, day: 26 },
+      { name: "Independence Day", month: 7, day: 4 },
+      { name: "Labor Day", month: 9, day: 1 },
+      { name: "Columbus Day", month: 10, day: 13 },
+      { name: "Veterans Day", month: 11, day: 11 },
+      { name: "Thanksgiving", month: 11, day: 27 },
+      { name: "Christmas Day", month: 12, day: 25 },
+    ],
+    FR: [ // France
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Victory in Europe Day", month: 5, day: 8 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Bastille Day", month: 7, day: 14 },
+      { name: "Assumption Day", month: 8, day: 15 },
+      { name: "All Saints' Day", month: 11, day: 1 },
+      { name: "Armistice Day", month: 11, day: 11 },
+      { name: "Christmas Day", month: 12, day: 25 },
+    ],
+    IT: [ // Italy
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Epiphany", month: 1, day: 6 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Liberation Day", month: 4, day: 25 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Republic Day", month: 6, day: 2 },
+      { name: "Assumption Day", month: 8, day: 15 },
+      { name: "All Saints' Day", month: 11, day: 1 },
+      { name: "Immaculate Conception", month: 12, day: 8 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "St. Stephen's Day", month: 12, day: 26 },
+    ],
+    ES: [ // Spain
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Epiphany", month: 1, day: 6 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Assumption Day", month: 8, day: 15 },
+      { name: "National Day", month: 10, day: 12 },
+      { name: "All Saints' Day", month: 11, day: 1 },
+      { name: "Constitution Day", month: 12, day: 6 },
+      { name: "Immaculate Conception", month: 12, day: 8 },
+      { name: "Christmas Day", month: 12, day: 25 },
+    ],
+  };
+
+  // Load preset holidays for selected country
+  const loadPresetHolidays = () => {
+    const presets = holidayPresets[selectedCountry];
+    if (!presets) {
+      setErrorMessage(`No holiday presets available for this country yet.`);
+      setShowErrorBanner(true);
+      setTimeout(() => setShowErrorBanner(false), 3000);
+      return;
+    }
+
+    // Add each preset holiday
+    presets.forEach((preset) => {
+      const date = new Date(currentYear, preset.month - 1, preset.day);
+      const formData = new FormData();
+      formData.append("action", "create");
+      formData.append("name", `${preset.name} (${countries.find(c => c.code === selectedCountry)?.name})`);
+      formData.append("date", date.toISOString().split('T')[0]);
+      fetcher.submit(formData, { method: "post" });
+    });
+  };
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
@@ -424,6 +648,8 @@ export default function Holidays() {
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 </svg>
                 <select
+                  value={selectedCountry}
+                  onChange={(e) => setSelectedCountry(e.target.value)}
                   style={{
                     width: "100%",
                     padding: "10px 12px 10px 40px",
@@ -435,17 +661,27 @@ export default function Holidays() {
                     cursor: "pointer",
                   }}
                 >
-                  <option>Germany</option>
-                  <option>Austria</option>
-                  <option>United Kingdom</option>
-                  <option>United States</option>
+                  {countries.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.name}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <Text as="p" variant="bodySm" tone="subdued" fontWeight="regular">
-                <span style={{ marginTop: "8px", display: "block" }}>
-                  Public holidays will be loaded automatically
-                </span>
-              </Text>
+              <div style={{ marginTop: "12px", display: "flex", gap: "8px", alignItems: "center" }}>
+                <Button
+                  size="slim"
+                  onClick={loadPresetHolidays}
+                  disabled={!holidayPresets[selectedCountry]}
+                >
+                  Load {currentYear} Holidays
+                </Button>
+                <Text as="p" variant="bodySm" tone="subdued" fontWeight="regular">
+                  {holidayPresets[selectedCountry]
+                    ? `${holidayPresets[selectedCountry].length} holidays available`
+                    : 'No presets available yet'}
+                </Text>
+              </div>
             </div>
 
             {/* Custom Holiday Dates */}
