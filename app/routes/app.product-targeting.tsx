@@ -1,26 +1,161 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
-import { Text, Button } from "@shopify/polaris";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { useLoaderData, useFetcher } from "@remix-run/react";
+import { Text, Button, Modal, TextField } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
+import { useState, useEffect } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
 
-  return {
+  // Get store
+  const store = await db.store.findUnique({
+    where: { shop: session.shop },
+    include: { settings: true },
+  });
+
+  if (!store) {
+    throw new Error("Store not found");
+  }
+
+  // Create settings if not exists
+  let settings = store.settings;
+  if (!settings) {
+    settings = await db.settings.create({
+      data: {
+        storeId: store.id,
+      },
+    });
+  }
+
+  return json({
     shop: session.shop,
-  };
+    targetingMode: settings.targetingMode || "all",
+    targetTags: settings.targetTags ? JSON.parse(settings.targetTags) : [],
+    excludedProducts: settings.excludedProducts ? JSON.parse(settings.excludedProducts) : [],
+  });
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const formData = await request.formData();
+  const action = formData.get("action");
+
+  const store = await db.store.findUnique({
+    where: { shop: session.shop },
+    include: { settings: true },
+  });
+
+  if (!store || !store.settings) {
+    return json({ error: "Store or settings not found" }, { status: 404 });
+  }
+
+  try {
+    if (action === "saveTargeting") {
+      const targetingMode = formData.get("targetingMode") as string;
+      const targetTags = formData.get("targetTags") as string;
+      const excludedProducts = formData.get("excludedProducts") as string;
+
+      await db.settings.update({
+        where: { id: store.settings.id },
+        data: {
+          targetingMode,
+          targetTags,
+          excludedProducts,
+        },
+      });
+
+      return json({ success: true });
+    }
+
+    return json({ error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("Action error:", error);
+    return json({ error: "Failed to perform action" }, { status: 500 });
+  }
 };
 
 export default function ProductTargeting() {
-  const { } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
 
-  const tags = [
-    { id: "1", name: "Premium", isActive: true },
-    { id: "2", name: "Fast Shipping", isActive: false },
-    { id: "3", name: "Pre-order", isActive: false },
-    { id: "4", name: "Limited Edition", isActive: false },
-    { id: "5", name: "Sale", isActive: false },
+  // State
+  const [targetingMode, setTargetingMode] = useState(loaderData.targetingMode);
+  const [activeTags, setActiveTags] = useState<string[]>(loaderData.targetTags);
+  const [excludedProducts, setExcludedProducts] = useState<string[]>(loaderData.excludedProducts);
+  const [showExcludeModal, setShowExcludeModal] = useState(false);
+  const [productIdInput, setProductIdInput] = useState("");
+
+  // Available tags
+  const availableTags = [
+    "Premium",
+    "Fast Shipping",
+    "Pre-order",
+    "Limited Edition",
+    "Sale",
+    "New Arrival",
+    "Best Seller",
+    "Clearance",
   ];
+
+  // Toggle tag
+  const toggleTag = (tagName: string) => {
+    if (activeTags.includes(tagName)) {
+      setActiveTags(activeTags.filter((t) => t !== tagName));
+    } else {
+      setActiveTags([...activeTags, tagName]);
+    }
+  };
+
+  // Add excluded product
+  const addExcludedProduct = () => {
+    if (productIdInput && !excludedProducts.includes(productIdInput)) {
+      setExcludedProducts([...excludedProducts, productIdInput]);
+      setProductIdInput("");
+      setShowExcludeModal(false);
+    }
+  };
+
+  // Remove excluded product
+  const removeExcludedProduct = (productId: string) => {
+    setExcludedProducts(excludedProducts.filter((id) => id !== productId));
+  };
+
+  // Quick actions
+  const selectAllProducts = () => {
+    setTargetingMode("all");
+    setActiveTags([]);
+  };
+
+  const clearSelection = () => {
+    setActiveTags([]);
+    setExcludedProducts([]);
+  };
+
+  // Save settings
+  const handleSave = () => {
+    const formData = new FormData();
+    formData.append("action", "saveTargeting");
+    formData.append("targetingMode", targetingMode);
+    formData.append("targetTags", JSON.stringify(activeTags));
+    formData.append("excludedProducts", JSON.stringify(excludedProducts));
+    fetcher.submit(formData, { method: "post" });
+  };
+
+  // Get display mode text
+  const getModeText = () => {
+    switch (targetingMode) {
+      case "all":
+        return "All Products";
+      case "specific":
+        return "Specific Products";
+      case "collections":
+        return "Collections";
+      default:
+        return "All Products";
+    }
+  };
 
   return (
     <div style={{ padding: "24px", background: "#f9fafb", minHeight: "100vh" }}>
@@ -54,19 +189,22 @@ export default function ProductTargeting() {
             <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
               {/* All Products Option */}
               <div
+                onClick={() => setTargetingMode("all")}
                 style={{
                   padding: "20px",
-                  border: "2px solid #2563eb",
+                  border: targetingMode === "all" ? "2px solid #2563eb" : "1px solid #e5e7eb",
                   borderRadius: "8px",
-                  background: "#eff6ff",
+                  background: targetingMode === "all" ? "#eff6ff" : "white",
                   cursor: "pointer",
+                  transition: "all 0.2s",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <input
                     type="radio"
                     name="scope"
-                    defaultChecked
+                    checked={targetingMode === "all"}
+                    onChange={() => setTargetingMode("all")}
                     style={{
                       width: "20px",
                       height: "20px",
@@ -74,7 +212,14 @@ export default function ProductTargeting() {
                       accentColor: "#2563eb",
                     }}
                   />
-                  <svg width="20" height="20" fill="none" stroke="#2563eb" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                  <svg
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke={targetingMode === "all" ? "#2563eb" : "#6b7280"}
+                    viewBox="0 0 24 24"
+                    style={{ strokeWidth: "2" }}
+                  >
                     <rect x="3" y="3" width="7" height="7" rx="1" />
                     <rect x="14" y="3" width="7" height="7" rx="1" />
                     <rect x="14" y="14" width="7" height="7" rx="1" />
@@ -82,7 +227,7 @@ export default function ProductTargeting() {
                   </svg>
                   <div>
                     <Text as="p" variant="bodyMd" fontWeight="semibold">
-                      <span style={{ color: "#2563eb" }}>All Products</span>
+                      <span style={{ color: targetingMode === "all" ? "#2563eb" : "#374151" }}>All Products</span>
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
                       Show delivery ETA on all product pages in your store
@@ -93,18 +238,22 @@ export default function ProductTargeting() {
 
               {/* Specific Products Option */}
               <div
+                onClick={() => setTargetingMode("specific")}
                 style={{
                   padding: "20px",
-                  border: "1px solid #e5e7eb",
+                  border: targetingMode === "specific" ? "2px solid #2563eb" : "1px solid #e5e7eb",
                   borderRadius: "8px",
-                  background: "white",
+                  background: targetingMode === "specific" ? "#eff6ff" : "white",
                   cursor: "pointer",
+                  transition: "all 0.2s",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <input
                     type="radio"
                     name="scope"
+                    checked={targetingMode === "specific"}
+                    onChange={() => setTargetingMode("specific")}
                     style={{
                       width: "20px",
                       height: "20px",
@@ -112,13 +261,22 @@ export default function ProductTargeting() {
                       accentColor: "#2563eb",
                     }}
                   />
-                  <svg width="20" height="20" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                  <svg
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke={targetingMode === "specific" ? "#2563eb" : "#6b7280"}
+                    viewBox="0 0 24 24"
+                    style={{ strokeWidth: "2" }}
+                  >
                     <circle cx="9" cy="9" r="7" />
                     <path d="M14 14l7 7" />
                   </svg>
                   <div>
                     <Text as="p" variant="bodyMd" fontWeight="medium">
-                      Specific Products
+                      <span style={{ color: targetingMode === "specific" ? "#2563eb" : "#374151" }}>
+                        Specific Products
+                      </span>
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
                       Manually select individual products
@@ -129,18 +287,22 @@ export default function ProductTargeting() {
 
               {/* Collections Option */}
               <div
+                onClick={() => setTargetingMode("collections")}
                 style={{
                   padding: "20px",
-                  border: "1px solid #e5e7eb",
+                  border: targetingMode === "collections" ? "2px solid #2563eb" : "1px solid #e5e7eb",
                   borderRadius: "8px",
-                  background: "white",
+                  background: targetingMode === "collections" ? "#eff6ff" : "white",
                   cursor: "pointer",
+                  transition: "all 0.2s",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <input
                     type="radio"
                     name="scope"
+                    checked={targetingMode === "collections"}
+                    onChange={() => setTargetingMode("collections")}
                     style={{
                       width: "20px",
                       height: "20px",
@@ -148,7 +310,14 @@ export default function ProductTargeting() {
                       accentColor: "#2563eb",
                     }}
                   />
-                  <svg width="20" height="20" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                  <svg
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke={targetingMode === "collections" ? "#2563eb" : "#6b7280"}
+                    viewBox="0 0 24 24"
+                    style={{ strokeWidth: "2" }}
+                  >
                     <rect x="3" y="3" width="7" height="7" rx="1" />
                     <rect x="14" y="3" width="7" height="7" rx="1" />
                     <rect x="14" y="14" width="7" height="7" rx="1" />
@@ -156,7 +325,9 @@ export default function ProductTargeting() {
                   </svg>
                   <div>
                     <Text as="p" variant="bodyMd" fontWeight="medium">
-                      Collections
+                      <span style={{ color: targetingMode === "collections" ? "#2563eb" : "#374151" }}>
+                        Collections
+                      </span>
                     </Text>
                     <Text as="p" variant="bodySm" tone="subdued">
                       Target entire collections of products
@@ -186,35 +357,39 @@ export default function ProductTargeting() {
             </Text>
 
             <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {tags.map((tag) => (
-                <button
-                  key={tag.id}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    border: "1px solid #e5e7eb",
-                    background: tag.isActive ? "#2563eb" : "white",
-                    color: tag.isActive ? "white" : "#6b7280",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                    <line x1="7" y1="7" x2="7.01" y2="7" />
-                  </svg>
-                  {tag.name}
-                  {tag.isActive && (
-                    <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              {availableTags.map((tagName) => {
+                const isActive = activeTags.includes(tagName);
+                return (
+                  <button
+                    key={tagName}
+                    onClick={() => toggleTag(tagName)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      border: "1px solid #e5e7eb",
+                      background: isActive ? "#2563eb" : "white",
+                      color: isActive ? "white" : "#6b7280",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" />
                     </svg>
-                  )}
-                </button>
-              ))}
+                    {tagName}
+                    {isActive && (
+                      <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -236,7 +411,45 @@ export default function ProductTargeting() {
               </span>
             </Text>
 
+            {/* Excluded products list */}
+            {excludedProducts.length > 0 && (
+              <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {excludedProducts.map((productId) => (
+                  <div
+                    key={productId}
+                    style={{
+                      padding: "12px 16px",
+                      background: "#f9fafb",
+                      borderRadius: "6px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text as="p" variant="bodySm">
+                      Product ID: {productId}
+                    </Text>
+                    <button
+                      onClick={() => removeExcludedProduct(productId)}
+                      style={{
+                        padding: "4px 8px",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#dc2626",
+                      }}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <button
+              onClick={() => setShowExcludeModal(true)}
               style={{
                 width: "100%",
                 marginTop: "16px",
@@ -276,7 +489,7 @@ export default function ProductTargeting() {
                   Target Mode
                 </Text>
                 <Text as="p" variant="bodyMd" fontWeight="medium">
-                  All
+                  {getModeText()}
                 </Text>
               </div>
               <div style={{ height: "1px", background: "#e5e7eb" }} />
@@ -285,7 +498,7 @@ export default function ProductTargeting() {
                   Tags Filter
                 </Text>
                 <Text as="p" variant="bodyMd" fontWeight="medium">
-                  1
+                  {activeTags.length}
                 </Text>
               </div>
               <div style={{ height: "1px", background: "#e5e7eb" }} />
@@ -294,7 +507,7 @@ export default function ProductTargeting() {
                   Excluded
                 </Text>
                 <Text as="p" variant="bodyMd" fontWeight="medium">
-                  0
+                  {excludedProducts.length}
                 </Text>
               </div>
             </div>
@@ -326,7 +539,7 @@ export default function ProductTargeting() {
               </div>
             </div>
             <a
-              href="#"
+              href="/app/plans"
               style={{
                 marginTop: "12px",
                 display: "inline-flex",
@@ -359,6 +572,7 @@ export default function ProductTargeting() {
             </Text>
             <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
               <button
+                onClick={selectAllProducts}
                 style={{
                   width: "100%",
                   padding: "10px 16px",
@@ -376,6 +590,7 @@ export default function ProductTargeting() {
                 Select all products
               </button>
               <button
+                onClick={clearSelection}
                 style={{
                   width: "100%",
                   padding: "10px 16px",
@@ -393,31 +608,73 @@ export default function ProductTargeting() {
                 Clear selection
               </button>
               <button
+                disabled
                 style={{
                   width: "100%",
                   padding: "10px 16px",
-                  background: "white",
+                  background: "#f9fafb",
                   border: "1px solid #d1d5db",
                   borderRadius: "6px",
-                  cursor: "pointer",
-                  color: "#374151",
+                  cursor: "not-allowed",
+                  color: "#9ca3af",
                   fontSize: "14px",
                   textAlign: "left",
                   transition: "all 0.2s",
                   fontWeight: "500",
                 }}
               >
-                Import from CSV
+                Import from CSV (Coming soon)
               </button>
             </div>
           </div>
 
           {/* Save Button */}
-          <Button variant="primary" size="large" fullWidth>
+          <Button
+            variant="primary"
+            size="large"
+            fullWidth
+            onClick={handleSave}
+            loading={fetcher.state === "submitting"}
+          >
             Save Targeting Rules
           </Button>
         </div>
       </div>
+
+      {/* Exclude Product Modal */}
+      <Modal
+        open={showExcludeModal}
+        onClose={() => {
+          setShowExcludeModal(false);
+          setProductIdInput("");
+        }}
+        title="Add Excluded Product"
+        primaryAction={{
+          content: "Add Product",
+          onAction: addExcludedProduct,
+          disabled: !productIdInput,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => {
+              setShowExcludeModal(false);
+              setProductIdInput("");
+            },
+          },
+        ]}
+      >
+        <Modal.Section>
+          <TextField
+            label="Product ID"
+            value={productIdInput}
+            onChange={setProductIdInput}
+            autoComplete="off"
+            placeholder="Enter Shopify Product ID"
+            helpText="You can find the product ID in your Shopify admin URL when editing a product"
+          />
+        </Modal.Section>
+      </Modal>
     </div>
   );
 }
