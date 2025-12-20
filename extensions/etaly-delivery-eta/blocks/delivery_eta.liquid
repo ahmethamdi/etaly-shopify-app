@@ -161,6 +161,16 @@
 
   const API_ENDPOINT = '/apps/etaly/api/storefront/calculate-eta';
 
+  // Get or create session ID for analytics tracking
+  function getSessionId() {
+    let sessionId = sessionStorage.getItem('etaly_session_id');
+    if (!sessionId) {
+      sessionId = 'etaly_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('etaly_session_id', sessionId);
+    }
+    return sessionId;
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
@@ -185,6 +195,8 @@
 
     try {
       const countryCode = await getCustomerCountry();
+      block.dataset.countryCode = countryCode; // Store for click tracking
+
       const eta = await fetchETA({
         productId,
         variantId,
@@ -193,7 +205,7 @@
 
       if (eta && eta.success) {
         displayETA(block, eta.eta, style, showCutoff);
-        trackImpression(productId, variantId, eta.eta.ruleId);
+        trackImpression(productId, variantId, eta.eta.ruleId, countryCode);
       } else {
         showError(block);
       }
@@ -239,6 +251,12 @@
       cutoffEl.style.display = 'inline';
       startCutoffTimer(cutoffEl, eta.cutoffTime);
     }
+
+    // Add click tracking
+    contentEl.style.cursor = 'pointer';
+    contentEl.addEventListener('click', function() {
+      trackClick(block.dataset.productId, block.dataset.variantId, eta.ruleId, block.dataset.countryCode);
+    });
   }
 
   function showError(block) {
@@ -288,12 +306,14 @@
     setInterval(updateTimer, 60000);
   }
 
-  function trackImpression(productId, variantId, ruleId) {
+  function trackImpression(productId, variantId, ruleId, countryCode) {
     const trackData = new FormData();
     trackData.append('eventType', 'impression');
+    trackData.append('sessionId', getSessionId());
     trackData.append('productId', productId);
     trackData.append('variantId', variantId);
     trackData.append('ruleId', ruleId);
+    trackData.append('countryCode', countryCode);
     trackData.append('pageType', 'product');
 
     fetch('/apps/etaly/api/storefront/track', {
@@ -304,6 +324,27 @@
       }
     }).catch(err => {
       console.warn('ETAly: Failed to track impression', err);
+    });
+  }
+
+  function trackClick(productId, variantId, ruleId, countryCode) {
+    const trackData = new FormData();
+    trackData.append('eventType', 'click');
+    trackData.append('sessionId', getSessionId());
+    trackData.append('productId', productId);
+    trackData.append('variantId', variantId);
+    trackData.append('ruleId', ruleId);
+    trackData.append('countryCode', countryCode);
+    trackData.append('pageType', 'product');
+
+    fetch('/apps/etaly/api/storefront/track', {
+      method: 'POST',
+      body: trackData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    }).catch(err => {
+      console.warn('ETAly: Failed to track click', err);
     });
   }
 
