@@ -159,6 +159,7 @@ model Analytics {
 
   // Event details
   eventType         String   // impression, click, conversion
+  sessionId         String?  // For conversion attribution
   ruleId            String?  // Which delivery rule was shown
 
   // Product details
@@ -179,6 +180,7 @@ model Analytics {
 
   @@index([storeId, eventType, timestamp])
   @@index([storeId, ruleId])
+  @@index([storeId, sessionId])
 }
 
 // Cart & Checkout ETA Settings

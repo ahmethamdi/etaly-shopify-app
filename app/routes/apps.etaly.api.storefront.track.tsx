@@ -25,6 +25,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const formData = await request.formData();
 
     const eventType = formData.get("eventType") as string; // impression, click, conversion
+    const sessionId = formData.get("sessionId") as string | null;
     const ruleId = formData.get("ruleId") as string | null;
     const productId = formData.get("productId") as string | null;
     const variantId = formData.get("variantId") as string | null;
@@ -40,11 +41,13 @@ export async function action({ request }: ActionFunctionArgs) {
       data: {
         storeId: store.id,
         eventType,
+        sessionId,
         ruleId,
         productId,
         variantId,
         countryCode,
         pageType,
+        timestamp: new Date(),
       },
     });
 

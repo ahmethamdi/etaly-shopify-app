@@ -26,20 +26,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       shop,
       stats: {
         totalImpressions: 0,
+        impressionsChange: "0%",
         clickEvents: 0,
+        clicksChange: "0%",
         conversions: 0,
-        ctr: 0,
+        conversionsChange: "0%",
+        ctr: "0.0",
+        ctrChange: "0%",
       },
       topRules: [],
       countries: [],
     });
   }
 
-  // Get date 7 days ago
-  const sevenDaysAgo = new Date();
+  // Get date ranges
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // Fetch analytics data
+  const fourteenDaysAgo = new Date(now);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  // Fetch current period analytics (last 7 days)
   const impressions = await db.analytics.count({
     where: {
       storeId: store.id,
@@ -64,8 +72,46 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     },
   });
 
+  // Fetch previous period analytics (7-14 days ago) for comparison
+  const prevImpressions = await db.analytics.count({
+    where: {
+      storeId: store.id,
+      eventType: "impression",
+      timestamp: { gte: fourteenDaysAgo, lt: sevenDaysAgo },
+    },
+  });
+
+  const prevClicks = await db.analytics.count({
+    where: {
+      storeId: store.id,
+      eventType: "click",
+      timestamp: { gte: fourteenDaysAgo, lt: sevenDaysAgo },
+    },
+  });
+
+  const prevConversions = await db.analytics.count({
+    where: {
+      storeId: store.id,
+      eventType: "conversion",
+      timestamp: { gte: fourteenDaysAgo, lt: sevenDaysAgo },
+    },
+  });
+
+  // Calculate percentage changes
+  const calculateChange = (current: number, previous: number): string => {
+    if (previous === 0) return current > 0 ? "+100%" : "0%";
+    const change = ((current - previous) / previous) * 100;
+    return change > 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
+  };
+
+  const impressionsChange = calculateChange(impressions, prevImpressions);
+  const clicksChange = calculateChange(clicks, prevClicks);
+  const conversionsChange = calculateChange(conversions, prevConversions);
+
   // Calculate CTR
   const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : "0.0";
+  const prevCtr = prevImpressions > 0 ? ((prevClicks / prevImpressions) * 100).toFixed(1) : "0.0";
+  const ctrChange = calculateChange(parseFloat(ctr), parseFloat(prevCtr));
 
   // Get top performing rules
   const rulesWithStats = await db.analytics.groupBy({
@@ -155,9 +201,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     shop: session.shop,
     stats: {
       totalImpressions: impressions,
+      impressionsChange,
       clickEvents: clicks,
+      clicksChange,
       conversions,
+      conversionsChange,
       ctr,
+      ctrChange,
     },
     topRules: topRulesData,
     countries: countryData,
@@ -174,8 +224,8 @@ export default function Analytics() {
       value: stats.totalImpressions.toLocaleString(),
       label: "Total Impressions",
       subtitle: "Last 7 days",
-      change: stats.totalImpressions > 0 ? "+18%" : "0%",
-      changeColor: "#10b981",
+      change: stats.impressionsChange,
+      changeColor: stats.impressionsChange.startsWith("+") ? "#10b981" : stats.impressionsChange.startsWith("-") ? "#ef4444" : "#6b7280",
     },
     {
       IconComponent: CursorIcon,
@@ -183,8 +233,8 @@ export default function Analytics() {
       value: stats.clickEvents.toLocaleString(),
       label: "Click Events",
       subtitle: `CTR: ${stats.ctr}%`,
-      change: stats.clickEvents > 0 ? "+24%" : "0%",
-      changeColor: "#10b981",
+      change: stats.clicksChange,
+      changeColor: stats.clicksChange.startsWith("+") ? "#10b981" : stats.clicksChange.startsWith("-") ? "#ef4444" : "#6b7280",
     },
     {
       IconComponent: OrderIcon,
@@ -192,8 +242,8 @@ export default function Analytics() {
       value: stats.conversions.toLocaleString(),
       label: "Conversions",
       subtitle: "Last 7 days",
-      change: stats.conversions > 0 ? "+2.3%" : "0%",
-      changeColor: "#10b981",
+      change: stats.conversionsChange,
+      changeColor: stats.conversionsChange.startsWith("+") ? "#10b981" : stats.conversionsChange.startsWith("-") ? "#ef4444" : "#6b7280",
     },
     {
       IconComponent: ChevronUpIcon,
@@ -201,8 +251,8 @@ export default function Analytics() {
       value: stats.totalImpressions > 0 ? `${((stats.conversions / stats.totalImpressions) * 100).toFixed(1)}%` : "0%",
       label: "Conversion Rate",
       subtitle: "Impressions to conversions",
-      change: stats.conversions > 0 ? "+5%" : "0%",
-      changeColor: "#10b981",
+      change: stats.ctrChange,
+      changeColor: stats.ctrChange.startsWith("+") ? "#10b981" : stats.ctrChange.startsWith("-") ? "#ef4444" : "#6b7280",
     },
   ];
 
