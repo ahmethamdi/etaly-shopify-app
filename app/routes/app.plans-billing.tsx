@@ -1,19 +1,57 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { json } from "@remix-run/node";
+import { useLoaderData, useFetcher } from "@remix-run/react";
 import { Text, Icon } from "@shopify/polaris";
 import { StarFilledIcon, StarIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
+import { useState } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
 
-  return {
+  // Get store
+  const store = await db.store.findUnique({
+    where: { shop: session.shop },
+  });
+
+  const currentPlan = store?.plan || "free";
+
+  return json({
     shop: session.shop,
-  };
+    currentPlan,
+  });
 };
 
 export default function PlansBilling() {
-  const {} = useLoaderData<typeof loader>();
+  const { currentPlan } = useLoaderData<typeof loader>();
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const handleUpgrade = async (planId: string) => {
+    if (planId === "free") return;
+
+    setIsUpgrading(true);
+    try {
+      const formData = new FormData();
+      formData.append("plan", planId);
+
+      const response = await fetch("/api/billing/subscribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.confirmationUrl) {
+        window.top!.location.href = data.confirmationUrl;
+      }
+    } catch (error) {
+      console.error("Upgrade error:", error);
+      alert("Failed to upgrade. Please try again.");
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
 
   const plans = [
     {
@@ -24,21 +62,21 @@ export default function PlansBilling() {
       iconColor: "#6b7280",
       price: "€0",
       period: "forever",
-      description: "Perfect for testing and small stores",
-      buttonText: "Current Plan",
-      buttonVariant: "secondary" as const,
-      buttonDisabled: true,
+      description: "Deneme & Küçük Mağazalar",
+      buttonText: currentPlan === "free" ? "Current Plan" : "Downgrade to Free",
+      buttonVariant: currentPlan === "free" ? ("secondary" as const) : ("secondary" as const),
+      buttonDisabled: currentPlan === "free",
       features: [
         { text: "1 delivery rule", included: true },
-        { text: "1 country/region", included: true },
+        { text: "1 country / region", included: true },
         { text: "Basic ETA messages", included: true },
-        { text: "Product page display", included: true },
+        { text: "Product page ETA display", included: true },
         { text: "Email support", included: true },
-        { text: "Cart & checkout display", included: false },
-        { text: "Holiday calendar", included: false },
+        { text: "Cart & checkout ETA", included: false },
+        { text: "Holiday calendar & weekends", included: false },
         { text: "Analytics dashboard", included: false },
+        { text: "Product / collection targeting", included: false },
         { text: "Custom templates", included: false },
-        { text: "Priority support", included: false },
       ],
       isMostPopular: false,
     },
@@ -50,45 +88,44 @@ export default function PlansBilling() {
       iconColor: "#ffffff",
       price: "€19.99",
       period: "per month",
-      description: "Everything you need for a professional store",
-      buttonText: "Upgrade to Pro",
+      description: "Asıl Satış Yapan Plan",
+      buttonText: currentPlan === "pro" ? "Current Plan" : "Upgrade to Pro",
       buttonVariant: "primary" as const,
-      buttonDisabled: false,
+      buttonDisabled: currentPlan === "pro",
       features: [
         { text: "Unlimited delivery rules", included: true },
         { text: "Unlimited countries", included: true },
         { text: "Advanced ETA messages", included: true },
-        { text: "All page placements", included: true },
-        { text: "Holiday calendar & weekends", included: true },
-        { text: "Cart & checkout display", included: true },
+        { text: "Product / Collection / Tag targeting", included: true },
+        { text: "Cart & Checkout ETA display", included: true },
+        { text: "Holiday calendar & weekends logic", included: true },
         { text: "Analytics dashboard", included: true },
+        { text: "All page placements", included: true },
         { text: "Custom CSS styling", included: true },
         { text: "Email & chat support", included: true },
-        { text: "Remove branding", included: false },
       ],
       isMostPopular: true,
     },
     {
       id: "advanced",
       name: "Advanced",
-      icon: "",
+      IconComponent: StarFilledIcon,
       iconBg: "#f59e0b",
       iconColor: "#ffffff",
       price: "€49.99",
       period: "per month",
-      description: "For high-volume stores and agencies",
-      buttonText: "Upgrade to Advanced",
+      description: "Agency & High-Volume Stores",
+      buttonText: currentPlan === "advanced" ? "Current Plan" : "Upgrade to Advanced",
       buttonVariant: "secondary" as const,
-      buttonDisabled: false,
+      buttonDisabled: currentPlan === "advanced",
       features: [
         { text: "Everything in Pro", included: true },
         { text: "Variant-level ETA override", included: true },
-        { text: "Multi-store support (3 stores)", included: true },
+        { text: "Multi-store support (up to 3 stores)", included: true },
         { text: "Advanced analytics & A/B testing", included: true },
-        { text: "Custom integrations", included: true },
         { text: "API access", included: true },
-        { text: "White-label option", included: true },
-        { text: "Priority support (1h response)", included: true },
+        { text: "White-label option (remove branding)", included: true },
+        { text: "Priority support (1h response target)", included: true },
         { text: "Dedicated account manager", included: true },
         { text: "Custom feature requests", included: true },
       ],
@@ -210,7 +247,8 @@ export default function PlansBilling() {
 
             {/* Button */}
             <button
-              disabled={plan.buttonDisabled}
+              disabled={plan.buttonDisabled || isUpgrading}
+              onClick={() => handleUpgrade(plan.id)}
               style={{
                 width: "100%",
                 padding: "14px",
@@ -220,11 +258,11 @@ export default function PlansBilling() {
                 color: plan.buttonVariant === "primary" ? "white" : plan.buttonDisabled ? "#9ca3af" : "#374151",
                 fontSize: "14px",
                 fontWeight: "600",
-                cursor: plan.buttonDisabled ? "not-allowed" : "pointer",
+                cursor: plan.buttonDisabled || isUpgrading ? "not-allowed" : "pointer",
                 marginBottom: "24px",
               }}
             >
-              {plan.buttonText}
+              {isUpgrading ? "Processing..." : plan.buttonText}
             </button>
 
             {/* Features */}
@@ -356,16 +394,17 @@ export default function PlansBilling() {
         </div>
       </div>
 
-      {/* Current Subscription */}
-      <div
-        style={{
-          background: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          border: "1px solid #e5e7eb",
-          marginBottom: "24px",
-        }}
-      >
+      {/* Current Subscription - Only show if user is on Pro or Advanced */}
+      {(currentPlan === "pro" || currentPlan === "advanced") && (
+        <div
+          style={{
+            background: "white",
+            borderRadius: "12px",
+            padding: "32px",
+            border: "1px solid #e5e7eb",
+            marginBottom: "24px",
+          }}
+        >
         <Text as="h2" variant="headingMd" fontWeight="semibold">
           <span style={{ display: "block", marginBottom: "24px" }}>Current Subscription</span>
         </Text>
@@ -389,10 +428,10 @@ export default function PlansBilling() {
           {/* Plan Info */}
           <div style={{ flex: 1 }}>
             <Text as="h3" variant="headingMd" fontWeight="semibold">
-              Pro Plan
+              {currentPlan === "pro" ? "Pro Plan" : "Advanced Plan"}
             </Text>
             <Text as="p" variant="bodySm" tone="subdued">
-              €19.99 per month • Renews on Jan 15, 2025
+              {currentPlan === "pro" ? "€19.99" : "€49.99"} per month • Active subscription
             </Text>
           </div>
 
@@ -487,6 +526,7 @@ export default function PlansBilling() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Shopify Billing Integration */}
       <div
@@ -522,11 +562,13 @@ export default function PlansBilling() {
             </Text>
             <Text as="p" variant="bodySm" tone="subdued">
               <span style={{ display: "block", marginBottom: "12px" }}>
-                All charges are processed through Shopify's secure billing system. You'll see "Delivery ETA App" on your Shopify invoice. No separate payment required.
+                All charges are processed through Shopify's secure billing system. You'll see "ETAly App" on your Shopify invoice.
               </span>
             </Text>
             <a
-              href="#"
+              href="https://help.shopify.com/en/manual/your-account/manage-billing"
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 color: "#2563eb",
                 fontSize: "14px",
