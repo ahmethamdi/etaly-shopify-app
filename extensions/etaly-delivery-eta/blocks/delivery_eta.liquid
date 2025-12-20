@@ -358,6 +358,56 @@
         });
       }
     });
+
+    // Intercept add to cart to include sessionId
+    document.addEventListener('submit', function(e) {
+      const form = e.target;
+      if (form.getAttribute('action')?.includes('/cart/add') ||
+          form.querySelector('[name="add"]') ||
+          form.classList.contains('product-form')) {
+
+        // Add sessionId as hidden input
+        let sessionInput = form.querySelector('input[name="attributes[etaly_session_id]"]');
+        if (!sessionInput) {
+          sessionInput = document.createElement('input');
+          sessionInput.type = 'hidden';
+          sessionInput.name = 'attributes[etaly_session_id]';
+          form.appendChild(sessionInput);
+        }
+        sessionInput.value = getSessionId();
+      }
+    });
+
+    // Intercept AJAX add to cart (modern themes)
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      const [url, options] = args;
+
+      // Check if this is an add to cart request
+      if (typeof url === 'string' && url.includes('/cart/add')) {
+        if (options && options.body) {
+          try {
+            // Handle FormData
+            if (options.body instanceof FormData) {
+              options.body.append('attributes[etaly_session_id]', getSessionId());
+            }
+            // Handle JSON
+            else if (typeof options.body === 'string') {
+              const data = JSON.parse(options.body);
+              if (!data.attributes) {
+                data.attributes = {};
+              }
+              data.attributes.etaly_session_id = getSessionId();
+              options.body = JSON.stringify(data);
+            }
+          } catch (err) {
+            console.warn('ETAly: Could not add sessionId to cart', err);
+          }
+        }
+      }
+
+      return originalFetch.apply(this, args);
+    };
   }
 })();
 </script>
