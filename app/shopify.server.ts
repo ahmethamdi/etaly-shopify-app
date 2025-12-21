@@ -18,8 +18,7 @@ const shopify = shopifyApp({
   distribution: AppDistribution.AppStore,
   isEmbeddedApp: false,
   future: {
-    unstable_newEmbeddedAuthStrategy: true,
-    expiringOfflineAccessTokens: true,
+    unstable_newEmbeddedAuthStrategy: false,
   },
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
