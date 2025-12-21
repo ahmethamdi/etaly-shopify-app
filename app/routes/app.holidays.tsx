@@ -480,6 +480,119 @@ export default function Holidays() {
       { name: "Immaculate Conception", month: 12, day: 8 },
       { name: "Christmas Day", month: 12, day: 25 },
     ],
+    TR: [ // Turkey
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "National Sovereignty Day", month: 4, day: 23 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Youth and Sports Day", month: 5, day: 19 },
+      { name: "Democracy Day", month: 7, day: 15 },
+      { name: "Victory Day", month: 8, day: 30 },
+      { name: "Republic Day", month: 10, day: 29 },
+    ],
+    NL: [ // Netherlands
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "King's Day", month: 4, day: 27 },
+      { name: "Liberation Day", month: 5, day: 5 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    BE: [ // Belgium
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Belgian National Day", month: 7, day: 21 },
+      { name: "Assumption Day", month: 8, day: 15 },
+      { name: "All Saints' Day", month: 11, day: 1 },
+      { name: "Armistice Day", month: 11, day: 11 },
+      { name: "Christmas Day", month: 12, day: 25 },
+    ],
+    CH: [ // Switzerland
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Swiss National Day", month: 8, day: 1 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "St. Stephen's Day", month: 12, day: 26 },
+    ],
+    PL: [ // Poland
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Epiphany", month: 1, day: 6 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Constitution Day", month: 5, day: 3 },
+      { name: "Corpus Christi", month: 6, day: 19 },
+      { name: "Assumption Day", month: 8, day: 15 },
+      { name: "All Saints' Day", month: 11, day: 1 },
+      { name: "Independence Day", month: 11, day: 11 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    SE: [ // Sweden
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Epiphany", month: 1, day: 6 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "National Day", month: 6, day: 6 },
+      { name: "Midsummer Eve", month: 6, day: 20 },
+      { name: "Christmas Eve", month: 12, day: 24 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    DK: [ // Denmark
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Maundy Thursday", month: 4, day: 17 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Great Prayer Day", month: 5, day: 16 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    NO: [ // Norway
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Maundy Thursday", month: 4, day: 17 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Labour Day", month: 5, day: 1 },
+      { name: "Constitution Day", month: 5, day: 17 },
+      { name: "Ascension Day", month: 5, day: 29 },
+      { name: "Whit Monday", month: 6, day: 9 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    CA: [ // Canada
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Victoria Day", month: 5, day: 19 },
+      { name: "Canada Day", month: 7, day: 1 },
+      { name: "Labour Day", month: 9, day: 1 },
+      { name: "Thanksgiving", month: 10, day: 13 },
+      { name: "Remembrance Day", month: 11, day: 11 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
+    AU: [ // Australia
+      { name: "New Year's Day", month: 1, day: 1 },
+      { name: "Australia Day", month: 1, day: 26 },
+      { name: "Good Friday", month: 4, day: 18 },
+      { name: "Easter Monday", month: 4, day: 21 },
+      { name: "Anzac Day", month: 4, day: 25 },
+      { name: "Queen's Birthday", month: 6, day: 9 },
+      { name: "Christmas Day", month: 12, day: 25 },
+      { name: "Boxing Day", month: 12, day: 26 },
+    ],
   };
 
   // Load preset holidays for selected country
@@ -492,12 +605,32 @@ export default function Holidays() {
       return;
     }
 
-    // Add each preset holiday
-    presets.forEach((preset) => {
+    const countryName = countries.find(c => c.code === selectedCountry)?.name;
+
+    // Check which holidays already exist
+    const existingHolidayNames = new Set(
+      holidays.map(h => h.name.toLowerCase())
+    );
+
+    // Filter out holidays that already exist
+    const holidaysToAdd = presets.filter(preset => {
+      const holidayName = `${preset.name} (${countryName})`.toLowerCase();
+      return !existingHolidayNames.has(holidayName);
+    });
+
+    if (holidaysToAdd.length === 0) {
+      setErrorMessage(`All ${countryName} holidays for ${currentYear} are already loaded.`);
+      setShowErrorBanner(true);
+      setTimeout(() => setShowErrorBanner(false), 3000);
+      return;
+    }
+
+    // Add each preset holiday that doesn't exist
+    holidaysToAdd.forEach((preset) => {
       const date = new Date(currentYear, preset.month - 1, preset.day);
       const formData = new FormData();
       formData.append("action", "create");
-      formData.append("name", `${preset.name} (${countries.find(c => c.code === selectedCountry)?.name})`);
+      formData.append("name", `${preset.name} (${countryName})`);
       formData.append("date", date.toISOString().split('T')[0]);
       fetcher.submit(formData, { method: "post" });
     });
