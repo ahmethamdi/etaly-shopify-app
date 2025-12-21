@@ -123,33 +123,16 @@ export default function App() {
             padding: "0",
           }}
         >
-          {/* Logo & App Name */}
+          {/* Logo */}
           <div style={{ padding: "20px 16px" }}>
-            <InlineStack gap="300" blockAlign="center">
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  background: "#2563eb",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-                  <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                </svg>
-              </div>
-              <div>
-                <Text as="h1" variant="headingMd" fontWeight="bold">
-                  Delivery ETA
-                </Text>
-                <Text as="p" variant="bodySm" tone="subdued">
-                  v1.0
-                </Text>
-              </div>
-            </InlineStack>
+            <img
+              src="/images/etaly-logo.svg"
+              alt="ETAly"
+              style={{
+                width: "140px",
+                height: "auto"
+              }}
+            />
           </div>
 
           {/* Navigation Menu */}

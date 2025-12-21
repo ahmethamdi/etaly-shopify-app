@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="katman_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 180 52">
+  <defs>
+    <style>
+      .st0 {
+        font-family: Helvetica-Bold, Helvetica;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0em;
+      }
+
+      .st0, .st1, .st2 {
+        isolation: isolate;
+      }
+
+      .st0, .st3 {
+        fill: #4338ca;
+      }
+
+      .st1 {
+        opacity: .3;
+        stroke-width: 1px;
+      }
+
+      .st1, .st4 {
+        fill: none;
+        stroke: #4338ca;
+        stroke-linecap: round;
+      }
+
+      .st4 {
+        stroke-width: 2.1px;
+      }
+
+      .st5 {
+        fill: #6366f1;
+      }
+    </style>
+  </defs>
+  <g>
+    <path class="st4" d="M52,6.8c11.5,0,20.8,9.3,20.8,20.8s-9.3,20.8-20.8,20.8-20.8-9.3-20.8-20.8"/>
+    <circle class="st3" cx="52" cy="6.8" r="3.1"/>
+    <path class="st1" d="M52,14.6c7.2,0,13,5.8,13,13"/>
+  </g>
+  <g class="st2">
+    <text class="st0" transform="translate(88 37.6)"><tspan x="0" y="0">ETA</tspan></text>
+    <g class="st2">
+      <path class="st5" d="M139.6,19.1h2.3v18.5h-2.3v-18.5Z"/>
+      <path class="st5" d="M146,25l2.8,7.4c.3.8.6,1.8.8,2.6h0c.2-.8.5-1.7.8-2.6l2.5-7.4h2.4l-3.4,9c-1.6,4.3-2.8,6.5-4.3,7.9-1.1,1-2.2,1.4-2.8,1.5l-.6-1.9c.6-.2,1.3-.5,2-1.1.6-.5,1.4-1.4,1.9-2.5.1-.2.2-.4.2-.5s0-.3-.2-.6l-4.7-11.6h2.5Z"/>
+    </g>
+  </g>
+</svg>
