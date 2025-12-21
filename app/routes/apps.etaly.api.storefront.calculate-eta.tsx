@@ -6,18 +6,40 @@ import ETACalculator from "../services/eta-calculator.server";
 // Public API endpoint for storefront (no authentication required)
 export async function action({ request }: ActionFunctionArgs) {
   try {
-    // Get shop from request headers or cookies
-    const shop = request.headers.get("X-Shop-Domain") ||
-                 request.headers.get("Referer")?.match(/https?:\/\/([^\/]+)/)?.[1];
+    // Get shop from request headers, referer, or origin
+    let shop = request.headers.get("X-Shop-Domain");
 
     if (!shop) {
-      return json(
-        {
-          success: false,
-          error: "Shop domain not found",
-        },
-        { status: 400 }
-      );
+      const referer = request.headers.get("Referer");
+      const origin = request.headers.get("Origin");
+      const url = referer || origin;
+
+      if (url) {
+        const match = url.match(/https?:\/\/([^\/]+)/);
+        shop = match?.[1] || null;
+      }
+    }
+
+    console.log("Storefront API - Shop:", shop);
+
+    if (!shop) {
+      // For development, try to find ANY active store (only in dev!)
+      const anyStore = await db.store.findFirst({
+        where: { isActive: true },
+      });
+
+      if (anyStore) {
+        console.log("Using first active store for development:", anyStore.shop);
+        shop = anyStore.shop;
+      } else {
+        return json(
+          {
+            success: false,
+            error: "Shop domain not found in request",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Find store
