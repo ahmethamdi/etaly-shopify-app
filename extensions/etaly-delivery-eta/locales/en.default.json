@@ -1,0 +1,6 @@
+{
+  "delivery_eta": {
+    "calculating": "Calculating delivery estimate...",
+    "error": "Unable to calculate delivery estimate"
+  }
+}
