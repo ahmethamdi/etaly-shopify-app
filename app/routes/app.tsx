@@ -132,7 +132,7 @@ export default function App() {
   };
 
   return (
-    <AppProvider isEmbeddedApp={true} apiKey={apiKey}>
+    <AppProvider isEmbeddedApp={false} apiKey={apiKey}>
       <div style={{ display: "flex", height: "100vh" }}>
         {/* Custom Sidebar */}
         <div
