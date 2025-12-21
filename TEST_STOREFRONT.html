@@ -148,7 +148,7 @@
       if (variantId) formData.append('variantId', variantId);
 
       try {
-        const response = await fetch('http://localhost:3000/apps/etaly/api/storefront/calculate-eta', {
+        const response = await fetch('http://localhost:3000/api/storefront/calculate-eta', {
           method: 'POST',
           body: formData
         });

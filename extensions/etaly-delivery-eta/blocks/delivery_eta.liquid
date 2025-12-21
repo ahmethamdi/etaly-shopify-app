@@ -159,7 +159,7 @@
 (function() {
   'use strict';
 
-  const API_ENDPOINT = '/apps/etaly/api/storefront/calculate-eta';
+  const API_ENDPOINT = '/api/storefront/calculate-eta';
 
   // Get or create session ID for analytics tracking
   function getSessionId() {
@@ -274,7 +274,7 @@
       return Shopify.Checkout.country;
     }
     try {
-      const response = await fetch('/apps/etaly/api/storefront/detect-country');
+      const response = await fetch('/api/storefront/detect-country');
       const data = await response.json();
       return data.countryCode || 'US';
     } catch (error) {
@@ -316,7 +316,7 @@
     trackData.append('countryCode', countryCode);
     trackData.append('pageType', 'product');
 
-    fetch('/apps/etaly/api/storefront/track', {
+    fetch('/api/storefront/track', {
       method: 'POST',
       body: trackData,
       headers: {
@@ -337,7 +337,7 @@
     trackData.append('countryCode', countryCode);
     trackData.append('pageType', 'product');
 
-    fetch('/apps/etaly/api/storefront/track', {
+    fetch('/api/storefront/track', {
       method: 'POST',
       body: trackData,
       headers: {

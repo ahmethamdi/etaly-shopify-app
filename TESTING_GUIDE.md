@@ -229,12 +229,12 @@ If you're building custom integrations, these endpoints are available:
 
 ### Get Country (Auto-detect)
 ```
-GET /apps/etaly/api/storefront/detect-country
+GET /api/storefront/detect-country
 ```
 
 ### Calculate ETA
 ```
-POST /apps/etaly/api/storefront/calculate-eta
+POST /api/storefront/calculate-eta
 Body:
   - productId: string
   - variantId: string
@@ -243,7 +243,7 @@ Body:
 
 ### Track Events
 ```
-POST /apps/etaly/api/storefront/track
+POST /api/storefront/track
 Body:
   - eventType: 'impression' | 'click'
   - sessionId: string
