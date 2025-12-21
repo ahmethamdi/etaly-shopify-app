@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETAly Storefront API Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f9fafb;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #4338ca;
+      margin-top: 0;
+    }
+    .test-form {
+      margin: 20px 0;
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: 600;
+      color: #374151;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background: #4338ca;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+      width: 100%;
+    }
+    button:hover {
+      background: #3730a3;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      display: none;
+    }
+    .result.success {
+      background: #d1fae5;
+      border: 1px solid #6ee7b7;
+      color: #065f46;
+      display: block;
+    }
+    .result.error {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      display: block;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      color: #6b7280;
+    }
+    .loading.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚚 ETAly API Test</h1>
+    <p style="color: #6b7280;">Test your storefront API endpoint locally</p>
+
+    <div class="test-form">
+      <label>Country Code:</label>
+      <select id="countryCode">
+        <option value="DE">Germany (DE)</option>
+        <option value="TR">Turkey (TR)</option>
+        <option value="US">United States (US)</option>
+        <option value="GB">United Kingdom (GB)</option>
+        <option value="FR">France (FR)</option>
+        <option value="IT">Italy (IT)</option>
+        <option value="ES">Spain (ES)</option>
+      </select>
+
+      <label>Postal Code (optional):</label>
+      <input type="text" id="postalCode" placeholder="e.g., 10115, 34000, 90210">
+
+      <label>Product ID (optional):</label>
+      <input type="text" id="productId" placeholder="e.g., gid://shopify/Product/123456">
+
+      <label>Variant ID (optional):</label>
+      <input type="text" id="variantId" placeholder="e.g., gid://shopify/ProductVariant/789012">
+
+      <button onclick="testAPI()">Test API Endpoint</button>
+
+      <div class="loading" id="loading">
+        <p>⏳ Calculating delivery estimate...</p>
+      </div>
+
+      <div class="result" id="result"></div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 15px; background: #f3f4f6; border-radius: 6px; font-size: 13px; color: #6b7280;">
+      <strong>Instructions:</strong><br>
+      1. Make sure your development server is running<br>
+      2. Make sure you have at least one delivery rule created<br>
+      3. Select a country and click "Test API Endpoint"<br>
+      4. Check the result below
+    </div>
+  </div>
+
+  <script>
+    async function testAPI() {
+      const loading = document.getElementById('loading');
+      const result = document.getElementById('result');
+
+      // Show loading
+      loading.classList.add('active');
+      result.style.display = 'none';
+
+      // Get form values
+      const countryCode = document.getElementById('countryCode').value;
+      const postalCode = document.getElementById('postalCode').value;
+      const productId = document.getElementById('productId').value;
+      const variantId = document.getElementById('variantId').value;
+
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('countryCode', countryCode);
+      if (postalCode) formData.append('postalCode', postalCode);
+      if (productId) formData.append('productId', productId);
+      if (variantId) formData.append('variantId', variantId);
+
+      try {
+        const response = await fetch('http://localhost:3000/apps/etaly/api/storefront/calculate-eta', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        // Hide loading
+        loading.classList.remove('active');
+
+        if (data.success) {
+          // Show success
+          result.className = 'result success';
+          result.innerHTML = `
+            <strong>✅ Success!</strong><br><br>
+            <strong>Message:</strong> ${data.eta.message}<br>
+            <strong>Min Date:</strong> ${data.eta.minDate}<br>
+            <strong>Max Date:</strong> ${data.eta.maxDate}<br>
+            <strong>Min Days:</strong> ${data.eta.minDays}<br>
+            <strong>Max Days:</strong> ${data.eta.maxDays}<br>
+            <strong>Rule ID:</strong> ${data.eta.ruleId}<br>
+            <strong>Rule Name:</strong> ${data.eta.ruleName}
+          `;
+        } else {
+          // Show error
+          result.className = 'result error';
+          result.innerHTML = `
+            <strong>❌ Error</strong><br><br>
+            ${data.error}
+          `;
+        }
+      } catch (error) {
+        // Hide loading
+        loading.classList.remove('active');
+
+        // Show error
+        result.className = 'result error';
+        result.innerHTML = `
+          <strong>❌ Request Failed</strong><br><br>
+          ${error.message}<br><br>
+          Make sure your development server is running on port 3000.
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
