@@ -1,35 +1,57 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { Link, Outlet, useLoaderData, useRouteError, useLocation } from "@remix-run/react";
 import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
-import { Text, InlineStack } from "@shopify/polaris";
+import { Text } from "@shopify/polaris";
 
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
+import { getTranslation, type TranslationKey } from "../i18n/translations";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
 
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+  // Get store to fetch current plan and settings
+  const store = await db.store.findUnique({
+    where: { shop: session.shop },
+  });
+
+  const settings = await db.settings.findUnique({
+    where: { storeId: store?.id },
+  });
+
+  const currentPlan = store?.plan || "free";
+  const currentLanguage = settings?.defaultLanguage || "en";
+
+  return json({
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+    currentPlan,
+    currentLanguage,
+  });
 };
 
 export default function App() {
-  const { apiKey } = useLoaderData<typeof loader>();
+  const { apiKey, currentPlan, currentLanguage } = useLoaderData<typeof loader>();
   const location = useLocation();
 
+  // Translation helper
+  const t = (key: TranslationKey) => getTranslation(currentLanguage, key);
+
   const menuItems = [
-    { path: "/app", label: "Dashboard", icon: "grid" },
-    { path: "/app/delivery-rules", label: "Delivery Rules", icon: "package" },
-    { path: "/app/holidays", label: "Holidays & Weekends", icon: "calendar" },
-    { path: "/app/multi-country", label: "Multi-Country Setup", icon: "globe" },
-    { path: "/app/product-targeting", label: "Product Targeting", icon: "target" },
-    { path: "/app/cart-checkout", label: "Cart & Checkout", icon: "cart" },
-    { path: "/app/message-templates", label: "Message Templates", icon: "message" },
-    { path: "/app/analytics", label: "Analytics", icon: "chart" },
-    { path: "/app/plans-billing", label: "Plans & Billing", icon: "card" },
-    { path: "/app/settings", label: "Settings", icon: "settings" },
+    { path: "/app", label: t("dashboard"), icon: "grid" },
+    { path: "/app/delivery-rules", label: t("deliveryRules"), icon: "package" },
+    { path: "/app/holidays", label: t("holidays"), icon: "calendar" },
+    { path: "/app/multi-country", label: t("multiCountry"), icon: "globe" },
+    { path: "/app/product-targeting", label: t("productTargeting"), icon: "target" },
+    { path: "/app/cart-checkout", label: t("cartCheckout"), icon: "cart" },
+    { path: "/app/message-templates", label: t("messageTemplates"), icon: "message" },
+    { path: "/app/analytics", label: t("analytics"), icon: "chart" },
+    { path: "/app/plans-billing", label: t("plansBilling"), icon: "card" },
+    { path: "/app/settings", label: t("settings"), icon: "settings" },
   ];
 
   const renderIcon = (iconName: string, isActive: boolean) => {
@@ -166,28 +188,64 @@ export default function App() {
             </div>
           </nav>
 
-          {/* Pro Plan Badge at Bottom */}
+          {/* Current Plan Badge at Bottom */}
           <div style={{ padding: "16px", marginTop: "auto" }}>
-            <div
-              style={{
-                background: "#d1fae5",
-                padding: "12px",
-                borderRadius: "8px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                <svg width="16" height="16" fill="#10b981" viewBox="0 0 24 24">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                </svg>
-                <Text as="p" variant="bodySm" fontWeight="semibold">
-                  Pro Plan
+            <Link to="/app/plans-billing" style={{ textDecoration: "none" }}>
+              <div
+                style={{
+                  background: currentPlan === "free" ? "#f3f4f6" : currentPlan === "pro" ? "#dbeafe" : "#fef3c7",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "4px" }}>
+                  {currentPlan === "free" ? (
+                    <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  ) : currentPlan === "pro" ? (
+                    <svg width="16" height="16" fill="#2563eb" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" fill="#f59e0b" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  )}
+                  <Text
+                    as="p"
+                    variant="bodySm"
+                    fontWeight="semibold"
+                  >
+                    <span style={{ color: currentPlan === "free" ? "#6b7280" : currentPlan === "pro" ? "#2563eb" : "#f59e0b" }}>
+                      {currentPlan === "free" ? t("freePlan") : currentPlan === "pro" ? t("proPlan") : t("advancedPlan")}
+                    </span>
+                  </Text>
+                </div>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  {currentPlan === "free" ? t("oneRuleOneCountry") : currentPlan === "pro" ? t("unlimitedRulesCountries") : t("everythingMultiStore")}
                 </Text>
+                {currentPlan === "free" && (
+                  <div style={{ marginTop: "8px" }}>
+                    <div
+                      style={{
+                        background: "#2563eb",
+                        color: "white",
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {t("upgradeToPro")}
+                    </div>
+                  </div>
+                )}
               </div>
-              <Text as="p" variant="bodySm" tone="subdued">
-                Unlimited rules & countries
-              </Text>
-            </div>
+            </Link>
           </div>
         </div>
 
