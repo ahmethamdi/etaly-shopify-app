@@ -1,9 +1,9 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
-import { Text } from "@shopify/polaris";
+import { Text, Modal } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import db from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -99,6 +99,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function Settings() {
   const { store, settings } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [appStatus, setAppStatus] = useState(store?.isActive ?? true);
   const [debugMode, setDebugMode] = useState(settings?.debugMode ?? false);
@@ -106,6 +107,10 @@ export default function Settings() {
   const [dateFormat, setDateFormat] = useState(settings?.dateFormat ?? "DD/MM/YYYY");
   const [timeFormat, setTimeFormat] = useState(settings?.timeFormat ?? "24");
   const [customCSS, setCustomCSS] = useState(settings?.customCSS ?? "");
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -128,6 +133,79 @@ export default function Settings() {
     formData.append("customCSS", customCSS);
 
     fetcher.submit(formData, { method: "post" });
+  };
+
+  const handleExport = () => {
+    window.open("/api/settings/export", "_blank");
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setShowImportModal(true);
+  };
+
+  const handleImportConfirm = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/settings/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        alert("Settings imported successfully! Reloading page...");
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        alert(`Failed to import: ${data.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      alert("Failed to import settings");
+    } finally {
+      setIsImporting(false);
+      setShowImportModal(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleResetClick = () => {
+    setShowResetModal(true);
+  };
+
+  const handleResetConfirm = async () => {
+    setIsResetting(true);
+    try {
+      const response = await fetch("/api/settings/reset", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        alert("All settings reset! Reloading page...");
+        window.location.reload();
+      } else {
+        alert("Failed to reset settings");
+      }
+    } catch (error) {
+      console.error("Reset error:", error);
+      alert("Failed to reset settings");
+    } finally {
+      setIsResetting(false);
+      setShowResetModal(false);
+    }
   };
 
   const isSaving = fetcher.state === "submitting";
@@ -531,6 +609,7 @@ export default function Settings() {
               </Text>
             </div>
             <button
+              onClick={handleExport}
               style={{
                 padding: "8px 16px",
                 background: "white",
@@ -546,10 +625,18 @@ export default function Settings() {
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
               </svg>
+              Export
             </button>
           </div>
 
           {/* Import Settings */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileSelect}
+            style={{ display: "none" }}
+          />
           <div
             style={{
               padding: "16px",
@@ -569,6 +656,7 @@ export default function Settings() {
               </Text>
             </div>
             <button
+              onClick={handleImportClick}
               style={{
                 padding: "8px 16px",
                 background: "white",
@@ -584,6 +672,7 @@ export default function Settings() {
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
               </svg>
+              Import
             </button>
           </div>
 
@@ -608,6 +697,7 @@ export default function Settings() {
               </Text>
             </div>
             <button
+              onClick={handleResetClick}
               style={{
                 padding: "8px 16px",
                 background: "white",
@@ -624,6 +714,7 @@ export default function Settings() {
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4m0 4h.01" />
               </svg>
+              Reset
             </button>
           </div>
         </div>
@@ -719,7 +810,7 @@ export default function Settings() {
 
       {/* Save/Cancel Buttons */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-        {fetcher.data?.success && (
+        {fetcher.data && typeof fetcher.data === 'object' && 'success' in fetcher.data && fetcher.data.success && (
           <div style={{
             padding: "12px 16px",
             background: "#d1fae5",
@@ -729,10 +820,10 @@ export default function Settings() {
             fontSize: "14px",
             fontWeight: "500",
           }}>
-            ✓ {fetcher.data.message}
+            ✓ {'message' in fetcher.data ? String(fetcher.data.message) : 'Settings saved'}
           </div>
         )}
-        {fetcher.data?.error && (
+        {fetcher.data && typeof fetcher.data === 'object' && 'error' in fetcher.data && (
           <div style={{
             padding: "12px 16px",
             background: "#fee2e2",
@@ -742,7 +833,7 @@ export default function Settings() {
             fontSize: "14px",
             fontWeight: "500",
           }}>
-            ✗ {fetcher.data.error}
+            ✗ {String(fetcher.data.error)}
           </div>
         )}
         <button
@@ -788,6 +879,73 @@ export default function Settings() {
           {isSaving ? "Saving..." : "Save Settings"}
         </button>
       </div>
+
+      {/* Import Confirmation Modal */}
+      <Modal
+        open={showImportModal}
+        onClose={() => {
+          setShowImportModal(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }}
+        title="Import Settings?"
+        primaryAction={{
+          content: isImporting ? "Importing..." : "Import Settings",
+          onAction: handleImportConfirm,
+          disabled: isImporting,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => {
+              setShowImportModal(false);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+              }
+            },
+          },
+        ]}
+      >
+        <Modal.Section>
+          <Text as="p" variant="bodyMd">
+            This will replace your current settings with the imported configuration. Your existing settings will be overwritten.
+          </Text>
+          <br />
+          <Text as="p" variant="bodyMd" fontWeight="bold">
+            Are you sure you want to continue?
+          </Text>
+        </Modal.Section>
+      </Modal>
+
+      {/* Reset Confirmation Modal */}
+      <Modal
+        open={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="Reset All Settings?"
+        primaryAction={{
+          content: isResetting ? "Resetting..." : "Reset All Settings",
+          onAction: handleResetConfirm,
+          destructive: true,
+          disabled: isResetting,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => setShowResetModal(false),
+          },
+        ]}
+      >
+        <Modal.Section>
+          <Text as="p" variant="bodyMd">
+            This will reset all ETAly settings, delivery rules, holidays, and templates to defaults. This action cannot be undone.
+          </Text>
+          <br />
+          <Text as="p" variant="bodyMd" fontWeight="bold">
+            Are you sure you want to continue?
+          </Text>
+        </Modal.Section>
+      </Modal>
     </div>
   );
 }

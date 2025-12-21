@@ -39,6 +39,7 @@ model Store {
   shop              String   @unique
   plan              String   @default("free") // free, pro, advanced
   isActive          Boolean  @default(true)
+  appEnabled        Boolean  @default(true) // Global app on/off switch
 
   // Holiday & Weekend settings
   excludeWeekends   Boolean  @default(true)
