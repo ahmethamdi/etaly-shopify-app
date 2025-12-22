@@ -142,7 +142,7 @@
 (function() {
   'use strict';
 
-  const API_ENDPOINT = '/api/storefront/calculate-cart-eta';
+  const API_ENDPOINT = '/apps/etaly/api/storefront/calculate-cart-eta';
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -244,7 +244,7 @@
       return Shopify.country;
     }
     try {
-      const response = await fetch('/api/storefront/detect-country');
+      const response = await fetch('/apps/etaly/api/storefront/detect-country');
       const data = await response.json();
       return data.countryCode || 'US';
     } catch (error) {
