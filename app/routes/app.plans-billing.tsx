@@ -60,7 +60,7 @@ export default function PlansBilling() {
       IconComponent: StarIcon,
       iconBg: "#f3f4f6",
       iconColor: "#6b7280",
-      price: "€0",
+      price: "$0",
       period: "forever",
       description: "Deneme & Küçük Mağazalar",
       buttonText: currentPlan === "free" ? "Current Plan" : "Downgrade to Free",
@@ -86,7 +86,7 @@ export default function PlansBilling() {
       IconComponent: StarFilledIcon,
       iconBg: "#2563eb",
       iconColor: "#ffffff",
-      price: "€19.99",
+      price: "$19.99",
       period: "per month",
       description: "Asıl Satış Yapan Plan",
       buttonText: currentPlan === "pro" ? "Current Plan" : "Upgrade to Pro",
@@ -112,7 +112,7 @@ export default function PlansBilling() {
       IconComponent: StarFilledIcon,
       iconBg: "#f59e0b",
       iconColor: "#ffffff",
-      price: "€49.99",
+      price: "$49.99",
       period: "per month",
       description: "Agency & High-Volume Stores",
       buttonText: currentPlan === "advanced" ? "Current Plan" : "Upgrade to Advanced",
@@ -431,7 +431,7 @@ export default function PlansBilling() {
               {currentPlan === "pro" ? "Pro Plan" : "Advanced Plan"}
             </Text>
             <Text as="p" variant="bodySm" tone="subdued">
-              {currentPlan === "pro" ? "€19.99" : "€49.99"} per month • Active subscription
+              {currentPlan === "pro" ? "$19.99" : "$49.99"} per month • Active subscription
             </Text>
           </div>
 
