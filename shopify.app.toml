@@ -1,6 +1,6 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "e0143e253cb68f1db0a1037c8cdf1411"
+client_id = "fa02a12940384495a35cbb314a97842c"
 name = "ETAly"
 application_url = "https://etaly.app"
 embedded = true
