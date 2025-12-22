@@ -92,18 +92,27 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     // Return ETA data
-    return json({
-      success: true,
-      eta: {
-        message: result.message,
-        minDate: result.minDate,
-        maxDate: result.maxDate,
-        minDays: result.minDays,
-        maxDays: result.maxDays,
-        ruleId: result.ruleId,
-        ruleName: result.ruleName,
+    return json(
+      {
+        success: true,
+        eta: {
+          message: result.message,
+          minDate: result.minDate,
+          maxDate: result.maxDate,
+          minDays: result.minDays,
+          maxDays: result.maxDays,
+          ruleId: result.ruleId,
+          ruleName: result.ruleName,
+        },
       },
-    });
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      }
+    );
   } catch (error) {
     console.error("Storefront ETA calculation error:", error);
     return json(
@@ -111,7 +120,26 @@ export async function action({ request }: ActionFunctionArgs) {
         success: false,
         error: "Failed to calculate ETA",
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
     );
   }
+}
+
+// Handle OPTIONS preflight request
+export async function loader({ request }: ActionFunctionArgs) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+  return json({ error: "Method not allowed" }, { status: 405 });
 }
