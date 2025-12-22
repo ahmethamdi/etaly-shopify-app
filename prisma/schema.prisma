@@ -237,3 +237,33 @@ model MessageTemplate {
   @@index([storeId])
   @@index([templateId])
 }
+
+// GDPR Compliance Log
+model ComplianceLog {
+  id                String   @id @default(cuid())
+  shop              String
+  requestType       String   // customer_data_request, customer_redaction, shop_redaction
+  customerId        String
+  customerEmail     String
+  requestedAt       DateTime
+  processedAt       DateTime?
+  payload           String   // JSON payload from Shopify
+
+  createdAt         DateTime @default(now())
+
+  @@index([shop, requestType])
+}
+
+// Analytics Event (for GDPR redaction)
+model AnalyticsEvent {
+  id                String   @id @default(cuid())
+  storeId           String
+  customerId        String?
+  eventType         String
+  metadata          String?  // JSON metadata
+
+  createdAt         DateTime @default(now())
+
+  @@index([customerId])
+  @@index([storeId])
+}
