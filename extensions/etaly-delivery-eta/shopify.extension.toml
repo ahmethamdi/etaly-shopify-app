@@ -8,4 +8,8 @@ handle = "etaly-delivery-eta"
 
 [[extensions.blocks]]
 type = "delivery_eta"
-name = "Delivery ETA"
+name = "Product Delivery ETA"
+
+[[extensions.blocks]]
+type = "cart_delivery_eta"
+name = "Cart Delivery ETA"

@@ -1,0 +1,195 @@
+{% comment %}
+  ETAly - Checkout Delivery ETA Snippet
+  Shows delivery estimate on checkout pages
+
+  Usage: Include this snippet in your checkout customization
+  {% render 'checkout_eta' %}
+{% endcomment %}
+
+<div
+  class="etaly-checkout-eta"
+  data-etaly-checkout-block
+  data-style="success"
+>
+  <div class="etaly-checkout-eta-loading">
+    <svg class="etaly-spinner" width="16" height="16" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="50" stroke-dashoffset="0">
+        <animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="1s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+    <span>Calculating delivery...</span>
+  </div>
+
+  <div class="etaly-checkout-eta-content" style="display: none;">
+    <span class="etaly-checkout-eta-icon">🚚</span>
+    <div class="etaly-checkout-eta-message">
+      <span class="etaly-checkout-eta-text"></span>
+    </div>
+  </div>
+</div>
+
+<style>
+.etaly-checkout-eta {
+  margin: 16px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.etaly-checkout-eta-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.etaly-spinner {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.etaly-checkout-eta-content {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #d1fae5;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  color: #047857;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.etaly-checkout-eta-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.etaly-checkout-eta-message {
+  flex: 1;
+}
+
+.etaly-checkout-eta-text {
+  font-weight: 600;
+}
+
+@keyframes etaly-checkout-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.etaly-checkout-eta-content {
+  animation: etaly-checkout-fade-in 0.3s ease-out;
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+
+  const API_ENDPOINT = '/api/storefront/calculate-checkout-eta';
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function init() {
+    const block = document.querySelector('[data-etaly-checkout-block]');
+    if (block) {
+      initBlock(block);
+    }
+  }
+
+  async function initBlock(block) {
+    try {
+      // Get checkout data from Shopify Checkout object
+      const checkoutData = getCheckoutData();
+
+      if (!checkoutData || !checkoutData.items || checkoutData.items.length === 0) {
+        block.style.display = 'none';
+        return;
+      }
+
+      const countryCode = checkoutData.shippingAddress?.countryCode ||
+                         checkoutData.country ||
+                         'US';
+
+      const eta = await fetchCheckoutETA({
+        items: checkoutData.items,
+        countryCode,
+        shippingAddress: checkoutData.shippingAddress
+      });
+
+      if (eta && eta.success) {
+        displayETA(block, eta.eta);
+      } else {
+        block.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('ETAly: Error fetching checkout delivery estimate', error);
+      block.style.display = 'none';
+    }
+  }
+
+  function getCheckoutData() {
+    // Try to get data from Shopify Checkout object
+    if (typeof Shopify !== 'undefined' && Shopify.Checkout) {
+      return {
+        items: Shopify.Checkout.line_items || [],
+        country: Shopify.Checkout.shipping_address?.country_code,
+        shippingAddress: Shopify.Checkout.shipping_address
+      };
+    }
+
+    // Fallback: Try to get from checkout form
+    const checkoutToken = document.querySelector('[name="checkout[token]"]')?.value;
+    if (checkoutToken) {
+      return {
+        token: checkoutToken,
+        items: [], // Will be fetched server-side
+        country: 'US'
+      };
+    }
+
+    return null;
+  }
+
+  async function fetchCheckoutETA(params) {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(params)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch checkout ETA');
+    }
+
+    return await response.json();
+  }
+
+  function displayETA(block, eta) {
+    const loadingEl = block.querySelector('.etaly-checkout-eta-loading');
+    const contentEl = block.querySelector('.etaly-checkout-eta-content');
+    const textEl = block.querySelector('.etaly-checkout-eta-text');
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'flex';
+    textEl.textContent = eta.message;
+  }
+})();
+</script>
