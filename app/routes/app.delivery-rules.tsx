@@ -189,6 +189,44 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 
+// Helper function to get icon SVG based on tone
+const getTemplateIcon = (tone: string) => {
+  switch (tone) {
+    case "success":
+      return (
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      );
+    case "warning":
+      return (
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+      );
+    case "info":
+    default:
+      return (
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+        </svg>
+      );
+  }
+};
+
+const getTemplateBgColor = (tone: string) => {
+  switch (tone) {
+    case "success":
+      return { bg: "#d1fae5", color: "#059669" }; // Light green
+    case "warning":
+      return { bg: "#fef3c7", color: "#d97706" }; // Light amber
+    case "info":
+    default:
+      return { bg: "#dbeafe", color: "#2563eb" }; // Light blue
+  }
+};
+
 export default function DeliveryRules() {
   const { deliveryRules, templates } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
@@ -361,14 +399,26 @@ export default function DeliveryRules() {
                 {/* Rule Details */}
                 <div style={{ display: "flex", alignItems: "center", gap: "24px", marginTop: "12px", flexWrap: "wrap" }}>
                   {/* Template */}
-                  {rule.template && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontSize: "16px" }}>{rule.template.icon}</span>
-                      <Text as="span" variant="bodySm" tone="subdued">
-                        {rule.template.name}
-                      </Text>
-                    </div>
-                  )}
+                  {rule.template && (() => {
+                    const { bg, color } = getTemplateBgColor(rule.template.toneDefault);
+                    return (
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "6px 12px",
+                        background: bg,
+                        borderRadius: "6px",
+                      }}>
+                        <div style={{ color }}>
+                          {getTemplateIcon(rule.template.toneDefault)}
+                        </div>
+                        <Text as="span" variant="bodySm" fontWeight="medium">
+                          <span style={{ color }}>{rule.template.name}</span>
+                        </Text>
+                      </div>
+                    );
+                  })()}
 
                   {/* Product Count */}
                   {rule.productCount > 0 && (
@@ -615,10 +665,18 @@ export default function DeliveryRules() {
               label="Message Template"
               options={[
                 { label: "None (use default)", value: "" },
-                ...templates.map((t: any) => ({
-                  label: `${t.icon || ""} ${t.name}`,
-                  value: t.templateId
-                }))
+                ...templates.map((t: any) => {
+                  const toneLabels: Record<string, string> = {
+                    success: "✓",
+                    warning: "⏰",
+                    info: "📦"
+                  };
+                  const prefix = toneLabels[t.toneDefault] || "📋";
+                  return {
+                    label: `${prefix} ${t.name}`,
+                    value: t.templateId
+                  };
+                })
               ]}
               value={formData.templateId}
               onChange={(value) => setFormData({ ...formData, templateId: value })}
@@ -763,10 +821,18 @@ export default function DeliveryRules() {
               label="Message Template"
               options={[
                 { label: "None (use default)", value: "" },
-                ...templates.map((t: any) => ({
-                  label: `${t.icon || ""} ${t.name}`,
-                  value: t.templateId
-                }))
+                ...templates.map((t: any) => {
+                  const toneLabels: Record<string, string> = {
+                    success: "✓",
+                    warning: "⏰",
+                    info: "📦"
+                  };
+                  const prefix = toneLabels[t.toneDefault] || "📋";
+                  return {
+                    label: `${prefix} ${t.name}`,
+                    value: t.templateId
+                  };
+                })
               ]}
               value={formData.templateId}
               onChange={(value) => setFormData({ ...formData, templateId: value })}
