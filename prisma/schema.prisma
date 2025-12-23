@@ -125,11 +125,15 @@ model DeliveryRule {
   excludeWeekends   Boolean  @default(true)
   excludeHolidays   Boolean  @default(true)
 
-  // Message template
+  // Message template (deprecated - use templateId instead)
   messageTemplate   String?
   messageIcon       String?
   messageColor      String?
   messageBgColor    String?
+
+  // Template relation
+  templateId        String?
+  template          MessageTemplate? @relation("RuleTemplate", fields: [templateId], references: [templateId])
 
   // Relations
   productTargeting  ProductTargeting[]
@@ -262,6 +266,7 @@ model MessageTemplate {
 
   // Relations
   activeForStores   Store[]  @relation("ActiveTemplate")
+  rulesUsingTemplate DeliveryRule[] @relation("RuleTemplate")
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

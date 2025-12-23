@@ -20,7 +20,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   try {
     // Get or create store
-    let store = await db.store.findUnique({
+    const store = await db.store.findUnique({
       where: { shop },
       include: {
         deliveryRules: {
@@ -31,31 +31,52 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     if (!store) {
       // Create store if it doesn't exist
-      store = await db.store.create({
+      await db.store.create({
         data: {
           shop,
           plan: "free",
           isActive: true,
         },
-        include: {
-          deliveryRules: true,
-        },
+      });
+
+      // Return empty rules for new store
+      return json({
+        shop: session.shop,
+        deliveryRules: [],
       });
     }
 
-    // Transform data for frontend
-    const deliveryRules = store.deliveryRules.map((rule) => {
-      const countries = JSON.parse(rule.countries);
-      return {
-        id: rule.id,
-        name: rule.name,
-        carrier: rule.carrier || "Not specified",
-        location: countries.join(", "),
-        deliveryTime: `${rule.minDays}-${rule.maxDays} business days`,
-        cutoffTime: rule.cutoffTime || "Not set",
-        isActive: rule.isActive,
-      };
-    });
+    // Manually fetch rules with template and product count
+    const deliveryRules = await Promise.all(
+      store.deliveryRules.map(async (rule: any) => {
+        const template = rule.templateId
+          ? await db.messageTemplate.findUnique({
+              where: { templateId: rule.templateId }
+            })
+          : null;
+
+        const productCount = await db.productTargeting.count({
+          where: { ruleId: rule.id }
+        });
+
+        const countries = JSON.parse(rule.countries);
+        return {
+          id: rule.id,
+          name: rule.name,
+          carrier: rule.carrier || "Not specified",
+          location: countries.join(", "),
+          deliveryTime: `${rule.minDays}-${rule.maxDays} business days`,
+          cutoffTime: rule.cutoffTime || "Not set",
+          isActive: rule.isActive,
+          template: template ? {
+            name: template.name,
+            icon: template.icon,
+            toneDefault: template.toneDefault,
+          } : null,
+          productCount,
+        };
+      })
+    );
 
     return json({
       shop: session.shop,
@@ -317,7 +338,29 @@ export default function DeliveryRules() {
                 </div>
 
                 {/* Rule Details */}
-                <div style={{ display: "flex", alignItems: "center", gap: "24px", marginTop: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "24px", marginTop: "12px", flexWrap: "wrap" }}>
+                  {/* Template */}
+                  {rule.template && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "16px" }}>{rule.template.icon}</span>
+                      <Text as="span" variant="bodySm" tone="subdued">
+                        {rule.template.name}
+                      </Text>
+                    </div>
+                  )}
+
+                  {/* Product Count */}
+                  {rule.productCount > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                        <path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/>
+                      </svg>
+                      <Text as="span" variant="bodySm" fontWeight="medium">
+                        <span style={{ color: "#2563eb" }}>{rule.productCount} {rule.productCount === 1 ? 'product' : 'products'}</span>
+                      </Text>
+                    </div>
+                  )}
+
                   {/* Location */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
@@ -429,7 +472,7 @@ export default function DeliveryRules() {
                     gap: "4px",
                     textDecoration: "none",
                   }}
-                  title="Product-specific delivery days"
+                  title={`Assign products to this rule (${rule.productCount} currently assigned)`}
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
                     <path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/>
