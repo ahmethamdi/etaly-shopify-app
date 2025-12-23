@@ -677,17 +677,17 @@ export default function DeliveryRules() {
                 { label: "None (use default)", value: "" },
                 ...templates.map((t: any) => {
                   const toneLabels: Record<string, string> = {
-                    success: "✓",
-                    warning: "⏰",
-                    info: "📦"
+                    success: "[SUCCESS]",
+                    warning: "[WARNING]",
+                    info: "[INFO]"
                   };
-                  const prefix = toneLabels[t.toneDefault] || "📋";
+                  const prefix = toneLabels[t.toneDefault] || "[TEMPLATE]";
                   const isPro = t.isPro;
                   const isFree = storePlan === "free";
                   const isLocked = isPro && isFree;
 
                   return {
-                    label: `${prefix} ${t.name}${isPro ? " 🔒 PRO" : ""}`,
+                    label: `${prefix} ${t.name}${isPro ? " [PRO]" : ""}`,
                     value: t.templateId,
                     disabled: isLocked
                   };
@@ -695,7 +695,7 @@ export default function DeliveryRules() {
               ]}
               value={formData.templateId}
               onChange={(value) => setFormData({ ...formData, templateId: value })}
-              helpText={storePlan === "free" ? "🔒 Upgrade to PRO to unlock premium templates" : "Choose which message template to use for this delivery rule"}
+              helpText={storePlan === "free" ? "Upgrade to PRO to unlock premium templates" : "Choose which message template to use for this delivery rule"}
             />
           </FormLayout>
         </Modal.Section>
@@ -838,17 +838,17 @@ export default function DeliveryRules() {
                 { label: "None (use default)", value: "" },
                 ...templates.map((t: any) => {
                   const toneLabels: Record<string, string> = {
-                    success: "✓",
-                    warning: "⏰",
-                    info: "📦"
+                    success: "[SUCCESS]",
+                    warning: "[WARNING]",
+                    info: "[INFO]"
                   };
-                  const prefix = toneLabels[t.toneDefault] || "📋";
+                  const prefix = toneLabels[t.toneDefault] || "[TEMPLATE]";
                   const isPro = t.isPro;
                   const isFree = storePlan === "free";
                   const isLocked = isPro && isFree;
 
                   return {
-                    label: `${prefix} ${t.name}${isPro ? " 🔒 PRO" : ""}`,
+                    label: `${prefix} ${t.name}${isPro ? " [PRO]" : ""}`,
                     value: t.templateId,
                     disabled: isLocked
                   };
@@ -856,7 +856,7 @@ export default function DeliveryRules() {
               ]}
               value={formData.templateId}
               onChange={(value) => setFormData({ ...formData, templateId: value })}
-              helpText={storePlan === "free" ? "🔒 Upgrade to PRO to unlock premium templates" : "Choose which message template to use for this delivery rule"}
+              helpText={storePlan === "free" ? "Upgrade to PRO to unlock premium templates" : "Choose which message template to use for this delivery rule"}
             />
           </FormLayout>
         </Modal.Section>
