@@ -220,15 +220,49 @@ export class ETACalculator {
   private static generateMessage(rule: any, minDate: Date, maxDate: Date, activeTemplate?: any): string {
     // Use active template message if available
     if (activeTemplate?.message) {
-      return activeTemplate.message
+      let message = activeTemplate.message
         .replace(/{eta_min_date}/g, this.formatDate(minDate))
         .replace(/{eta_max_date}/g, this.formatDate(maxDate))
+        .replace(/{eta_date}/g, this.formatDate(maxDate)) // Single ETA date (uses max)
         .replace(/{eta_min}/g, rule.minDays.toString())
         .replace(/{eta_max}/g, rule.maxDays.toString())
         .replace(/{minDate}/g, this.formatDate(minDate))
         .replace(/{maxDate}/g, this.formatDate(maxDate))
         .replace(/{minDays}/g, rule.minDays.toString())
         .replace(/{maxDays}/g, rule.maxDays.toString());
+
+      // Handle cutoff time variables
+      if (rule.cutoffTime) {
+        message = message.replace(/{cutoff_time}/g, rule.cutoffTime);
+
+        // Calculate countdown to cutoff time (simplified - shows hours remaining today)
+        const now = new Date();
+        const [hours, minutes] = rule.cutoffTime.split(':').map(Number);
+        const cutoff = new Date(now);
+        cutoff.setHours(hours, minutes, 0, 0);
+
+        if (cutoff > now) {
+          const diff = cutoff.getTime() - now.getTime();
+          const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
+          const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          message = message.replace(/{countdown}/g, `${hoursLeft}h ${minutesLeft}m`);
+        } else {
+          message = message.replace(/{countdown}/g, 'tomorrow');
+        }
+      } else {
+        // Fallback if no cutoff time set
+        message = message.replace(/{cutoff_time}/g, '5:00 PM');
+        message = message.replace(/{countdown}/g, '24 hours');
+      }
+
+      // Handle shipping method
+      if (rule.shippingMethod) {
+        message = message.replace(/{shipping_method}/g, rule.shippingMethod);
+      } else {
+        message = message.replace(/{shipping_method}/g, 'Express Shipping');
+      }
+
+      return message;
     }
 
     // Fallback to rule's custom template
