@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useFetcher } from "@remix-run/react";
+import { useLoaderData, useFetcher, useNavigate } from "@remix-run/react";
 import {
   Text,
   TextField,
@@ -232,6 +232,7 @@ const getTemplateBgColor = (tone: string) => {
 export default function DeliveryRules() {
   const { deliveryRules, templates, storePlan } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
+  const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -540,8 +541,8 @@ export default function DeliveryRules() {
                 </button>
 
                 {/* Product Targeting Button */}
-                <a
-                  href={`/app/delivery-rules/${rule.id}/products`}
+                <button
+                  onClick={() => navigate(`/app/delivery-rules/${rule?.id}/products`)}
                   style={{
                     padding: "8px 12px",
                     background: "transparent",
@@ -551,14 +552,13 @@ export default function DeliveryRules() {
                     display: "flex",
                     alignItems: "center",
                     gap: "4px",
-                    textDecoration: "none",
                   }}
                   title={`Assign products to this rule (${rule.productCount} currently assigned)`}
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
                     <path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/>
                   </svg>
-                </a>
+                </button>
 
                 {/* Delete Button */}
                 <button
