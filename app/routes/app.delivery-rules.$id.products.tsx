@@ -17,10 +17,11 @@ import {
   Thumbnail,
   EmptyState,
 } from "@shopify/polaris";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { ImageIcon } from "@shopify/polaris-icons";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -129,6 +130,7 @@ export default function ProductTargeting() {
   const { rule, productTargeting } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigate = useNavigate();
+  const shopify = useAppBridge();
 
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -138,6 +140,24 @@ export default function ProductTargeting() {
   const [processingDays, setProcessingDays] = useState(
     rule.processingDays.toString()
   );
+
+  const openProductPicker = useCallback(async () => {
+    const products = await shopify.resourcePicker({
+      type: "product",
+      action: "select",
+      multiple: false,
+    });
+
+    if (products && products.length > 0) {
+      const product = products[0];
+      setSelectedProduct({
+        id: product.id.split("/").pop(),
+        title: product.title,
+        image: product.images?.[0]?.originalSrc || null,
+      });
+      setShowProductPicker(true);
+    }
+  }, [shopify]);
 
   const handleAddProduct = useCallback(() => {
     if (!selectedProduct) return;
@@ -174,7 +194,7 @@ export default function ProductTargeting() {
       backAction={{ onAction: () => navigate(`/app/delivery-rules/${rule.id}`) }}
       primaryAction={{
         content: "Add Product",
-        onAction: () => setShowProductPicker(true),
+        onAction: openProductPicker,
       }}
     >
       <Layout>
@@ -252,30 +272,31 @@ export default function ProductTargeting() {
           </Card>
         </Layout.Section>
 
-        {showProductPicker && (
+        {showProductPicker && selectedProduct && (
           <Layout.Section>
             <Card>
               <BlockStack gap="400">
                 <Text variant="headingMd" as="h2">
-                  Add Product
+                  Configure Product Delivery
                 </Text>
 
-                <Banner tone="info">
-                  <Text as="p">
-                    Note: In production, this would use Shopify's Product
-                    Picker. For now, manually enter the product ID.
-                  </Text>
-                </Banner>
-
-                <TextField
-                  label="Shopify Product ID"
-                  value={selectedProduct?.id || ""}
-                  onChange={(value) =>
-                    setSelectedProduct({ id: value, title: `Product ${value}` })
-                  }
-                  autoComplete="off"
-                  helpText="Enter the Shopify product ID (numeric)"
-                />
+                <InlineStack gap="300" align="start">
+                  {selectedProduct.image && (
+                    <Thumbnail
+                      source={selectedProduct.image}
+                      alt={selectedProduct.title}
+                      size="large"
+                    />
+                  )}
+                  <BlockStack gap="100">
+                    <Text variant="headingMd" as="h3">
+                      {selectedProduct.title}
+                    </Text>
+                    <Text variant="bodySm" as="p" tone="subdued">
+                      Product ID: {selectedProduct.id}
+                    </Text>
+                  </BlockStack>
+                </InlineStack>
 
                 <Checkbox
                   label="Override delivery days for this product"
