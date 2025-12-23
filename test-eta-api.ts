@@ -8,7 +8,6 @@ async function testETACalculation() {
 
   // Get store
   const store = await prisma.store.findFirst({
-    where: { isActive: true },
     include: {
       activeTemplate: true,
     },

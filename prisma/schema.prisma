@@ -47,6 +47,7 @@ model Store {
 
   // Active message template
   activeTemplateId  String?
+  activeTemplate    MessageTemplate? @relation("ActiveTemplate", fields: [activeTemplateId], references: [templateId])
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -258,6 +259,9 @@ model MessageTemplate {
 
   // Where this template can be used
   placements        String   @default("product,cart,checkout") // JSON array as string
+
+  // Relations
+  activeForStores   Store[]  @relation("ActiveTemplate")
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
