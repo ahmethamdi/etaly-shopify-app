@@ -24,7 +24,28 @@
 
   <div class="etaly-eta-content" style="display: none;">
     {% if block.settings.show_icon %}
-      <span class="etaly-eta-icon">{{ block.settings.icon }}</span>
+      <span class="etaly-eta-icon" data-icon-type="{{ block.settings.icon_type }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          {% if block.settings.icon_type == 'truck' %}
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          {% elsif block.settings.icon_type == 'package' %}
+            <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          {% elsif block.settings.icon_type == 'plane' %}
+            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"></path>
+          {% else %}
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          {% endif %}
+        </svg>
+      </span>
     {% endif %}
     <div class="etaly-eta-message">
       <span class="etaly-eta-text"></span>
@@ -65,16 +86,25 @@
   display: none;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 14px 18px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .etaly-eta-icon {
-  font-size: 20px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.etaly-eta-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
 }
 
 .etaly-eta-message {
@@ -424,10 +454,24 @@
       "default": true
     },
     {
-      "type": "text",
-      "id": "icon",
-      "label": "Icon",
-      "default": "🚚"
+      "type": "select",
+      "id": "icon_type",
+      "label": "Icon type",
+      "options": [
+        {
+          "value": "truck",
+          "label": "Delivery Truck"
+        },
+        {
+          "value": "package",
+          "label": "Package Box"
+        },
+        {
+          "value": "plane",
+          "label": "Airplane (Express)"
+        }
+      ],
+      "default": "truck"
     },
     {
       "type": "select",
