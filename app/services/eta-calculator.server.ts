@@ -105,6 +105,14 @@ export class ETACalculator {
       where: { storeId },
     });
 
+    // Get store's active template
+    const store = await db.store.findUnique({
+      where: { id: storeId },
+      include: {
+        activeTemplate: true,
+      },
+    });
+
     // Calculate dates with potentially overridden values
     const result = await this.calculateDates({
       rule: { ...matchedRule, minDays, maxDays, processingDays },
@@ -112,6 +120,7 @@ export class ETACalculator {
       orderDate,
       excludeWeekends: matchedRule.excludeWeekends,
       excludeHolidays: matchedRule.excludeHolidays,
+      activeTemplate: store?.activeTemplate || null,
     });
 
     return {
@@ -130,8 +139,9 @@ export class ETACalculator {
     orderDate: Date;
     excludeWeekends: boolean;
     excludeHolidays: boolean;
+    activeTemplate?: any;
   }): Promise<ETAResult> {
-    const { rule, storeId, orderDate, excludeWeekends, excludeHolidays } = params;
+    const { rule, storeId, orderDate, excludeWeekends, excludeHolidays, activeTemplate } = params;
 
     // Get holidays if needed
     let holidays: Date[] = [];
@@ -157,8 +167,8 @@ export class ETACalculator {
       holidays
     );
 
-    // Generate message
-    const message = this.generateMessage(rule, minDate, maxDate);
+    // Generate message using active template if available
+    const message = this.generateMessage(rule, minDate, maxDate, activeTemplate);
 
     return {
       minDate,
@@ -207,9 +217,22 @@ export class ETACalculator {
   /**
    * Generate ETA message
    */
-  private static generateMessage(rule: any, minDate: Date, maxDate: Date): string {
+  private static generateMessage(rule: any, minDate: Date, maxDate: Date, activeTemplate?: any): string {
+    // Use active template message if available
+    if (activeTemplate?.message) {
+      return activeTemplate.message
+        .replace(/{eta_min_date}/g, this.formatDate(minDate))
+        .replace(/{eta_max_date}/g, this.formatDate(maxDate))
+        .replace(/{eta_min}/g, rule.minDays.toString())
+        .replace(/{eta_max}/g, rule.maxDays.toString())
+        .replace(/{minDate}/g, this.formatDate(minDate))
+        .replace(/{maxDate}/g, this.formatDate(maxDate))
+        .replace(/{minDays}/g, rule.minDays.toString())
+        .replace(/{maxDays}/g, rule.maxDays.toString());
+    }
+
+    // Fallback to rule's custom template
     if (rule.messageTemplate) {
-      // Use custom template
       return rule.messageTemplate
         .replace("{minDate}", this.formatDate(minDate))
         .replace("{maxDate}", this.formatDate(maxDate))
