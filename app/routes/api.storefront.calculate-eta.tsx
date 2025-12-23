@@ -103,6 +103,7 @@ export async function action({ request }: ActionFunctionArgs) {
           maxDays: result.maxDays,
           ruleId: result.ruleId,
           ruleName: result.ruleName,
+          tone: result.tone || "info",
         },
       },
       {

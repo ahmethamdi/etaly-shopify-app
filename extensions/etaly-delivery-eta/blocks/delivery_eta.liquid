@@ -341,7 +341,9 @@
       });
 
       if (eta && eta.success) {
-        displayETA(block, eta.eta, style, showCutoff);
+        // Use tone from API response, fallback to block style or default 'info'
+        const tone = eta.eta.tone || style || 'info';
+        displayETA(block, eta.eta, tone, showCutoff);
         trackImpression(productId, variantId, eta.eta.ruleId, countryCode);
       } else {
         showError(block);

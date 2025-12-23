@@ -17,6 +17,7 @@ interface ETAResult {
   message: string;
   ruleId?: string;
   ruleName?: string;
+  tone?: string;
 }
 
 export class ETACalculator {
@@ -127,6 +128,7 @@ export class ETACalculator {
       ...result,
       ruleId: matchedRule.id,
       ruleName: matchedRule.name,
+      tone: store?.activeTemplate?.toneDefault || "info", // Add tone for frontend styling
     };
   }
 
