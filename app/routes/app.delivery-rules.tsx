@@ -69,6 +69,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           cutoffTime: rule.cutoffTime || "Not set",
           isActive: rule.isActive,
           template: template ? {
+            templateId: template.templateId,
             name: template.name,
             icon: template.icon,
             toneDefault: template.toneDefault,
@@ -78,9 +79,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       })
     );
 
+    // Fetch available templates
+    const templates = await db.messageTemplate.findMany({
+      where: {
+        OR: [
+          { storeId: store.id },
+          { isBuiltIn: true }
+        ]
+      },
+      orderBy: { name: 'asc' }
+    });
+
     return json({
       shop: session.shop,
       deliveryRules,
+      templates,
     });
   } catch (error) {
     console.error("Error loading delivery rules:", error);
@@ -88,6 +101,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return json({
       shop: session.shop,
       deliveryRules: [],
+      templates: [],
     });
   }
 };
@@ -130,6 +144,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const countries = formData.get("countries") as string;
       const minDays = parseInt(formData.get("minDays") as string);
       const maxDays = parseInt(formData.get("maxDays") as string);
+      const templateId = formData.get("templateId") as string;
 
       await db.deliveryRule.create({
         data: {
@@ -139,6 +154,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           minDays: minDays || 2,
           maxDays: maxDays || 5,
           isActive: true,
+          templateId: templateId || null,
         },
       });
       return json({ success: true, message: "Rule created successfully" });
@@ -150,6 +166,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const countries = formData.get("countries") as string;
       const minDays = parseInt(formData.get("minDays") as string);
       const maxDays = parseInt(formData.get("maxDays") as string);
+      const templateId = formData.get("templateId") as string;
 
       await db.deliveryRule.update({
         where: { id: ruleId },
@@ -158,6 +175,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           countries: JSON.stringify([countries || "US"]),
           minDays: minDays || 2,
           maxDays: maxDays || 5,
+          templateId: templateId || null,
         },
       });
       return json({ success: true, message: "Rule updated successfully" });
@@ -172,7 +190,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 
 export default function DeliveryRules() {
-  const { deliveryRules } = useLoaderData<typeof loader>();
+  const { deliveryRules, templates } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -187,6 +205,7 @@ export default function DeliveryRules() {
     countries: "US",
     minDays: "2",
     maxDays: "5",
+    templateId: "",
   });
 
   const handleToggle = (ruleId: string) => {
@@ -223,9 +242,10 @@ export default function DeliveryRules() {
     submitData.append("countries", formData.countries);
     submitData.append("minDays", formData.minDays);
     submitData.append("maxDays", formData.maxDays);
+    submitData.append("templateId", formData.templateId);
     fetcher.submit(submitData, { method: "post" });
     setShowCreateModal(false);
-    setFormData({ name: "", countries: "US", minDays: "2", maxDays: "5" });
+    setFormData({ name: "", countries: "US", minDays: "2", maxDays: "5", templateId: "" });
   };
 
   const handlePreview = (rule: any) => {
@@ -240,6 +260,7 @@ export default function DeliveryRules() {
       countries: rule.location,
       minDays: rule.deliveryTime.split("-")[0].trim(),
       maxDays: rule.deliveryTime.split("-")[1].split(" ")[0].trim(),
+      templateId: rule.template?.templateId || "",
     });
     setShowEditModal(true);
   };
@@ -590,6 +611,19 @@ export default function DeliveryRules() {
               onChange={(value) => setFormData({ ...formData, maxDays: value })}
               autoComplete="off"
             />
+            <Select
+              label="Message Template"
+              options={[
+                { label: "None (use default)", value: "" },
+                ...templates.map((t: any) => ({
+                  label: `${t.icon || ""} ${t.name}`,
+                  value: t.templateId
+                }))
+              ]}
+              value={formData.templateId}
+              onChange={(value) => setFormData({ ...formData, templateId: value })}
+              helpText="Choose which message template to use for this delivery rule"
+            />
           </FormLayout>
         </Modal.Section>
       </Modal>
@@ -679,9 +713,10 @@ export default function DeliveryRules() {
               submitData.append("countries", formData.countries);
               submitData.append("minDays", formData.minDays);
               submitData.append("maxDays", formData.maxDays);
+              submitData.append("templateId", formData.templateId);
               fetcher.submit(submitData, { method: "post" });
               setShowEditModal(false);
-              setFormData({ name: "", countries: "US", minDays: "2", maxDays: "5" });
+              setFormData({ name: "", countries: "US", minDays: "2", maxDays: "5", templateId: "" });
             }
           },
           loading: fetcher.state === "submitting",
@@ -723,6 +758,19 @@ export default function DeliveryRules() {
               value={formData.maxDays}
               onChange={(value) => setFormData({ ...formData, maxDays: value })}
               autoComplete="off"
+            />
+            <Select
+              label="Message Template"
+              options={[
+                { label: "None (use default)", value: "" },
+                ...templates.map((t: any) => ({
+                  label: `${t.icon || ""} ${t.name}`,
+                  value: t.templateId
+                }))
+              ]}
+              value={formData.templateId}
+              onChange={(value) => setFormData({ ...formData, templateId: value })}
+              helpText="Choose which message template to use for this delivery rule"
             />
           </FormLayout>
         </Modal.Section>
