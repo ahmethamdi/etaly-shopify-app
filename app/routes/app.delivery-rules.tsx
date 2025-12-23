@@ -94,6 +94,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       shop: session.shop,
       deliveryRules,
       templates,
+      storePlan: store.plan, // Add store plan for feature restrictions
     });
   } catch (error) {
     console.error("Error loading delivery rules:", error);
@@ -102,6 +103,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       shop: session.shop,
       deliveryRules: [],
       templates: [],
+      storePlan: "free",
     });
   }
 };
@@ -228,7 +230,7 @@ const getTemplateBgColor = (tone: string) => {
 };
 
 export default function DeliveryRules() {
-  const { deliveryRules, templates } = useLoaderData<typeof loader>();
+  const { deliveryRules, templates, storePlan } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -467,21 +469,29 @@ export default function DeliveryRules() {
 
                 {/* Delivery Time Badge */}
                 <div style={{ marginTop: "12px" }}>
-                  <div style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "6px 12px",
-                    background: "#eef2ff",
-                    borderRadius: "6px",
-                  }}>
-                    <svg width="14" height="14" fill="none" stroke="#2563eb" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
-                      <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                    </svg>
-                    <Text as="span" variant="bodySm" fontWeight="medium" tone="base">
-                      <span style={{ color: "#2563eb" }}>Delivery: {rule.deliveryTime}</span>
-                    </Text>
-                  </div>
+                  {(() => {
+                    const { bg, color } = rule.template
+                      ? getTemplateBgColor(rule.template.toneDefault)
+                      : { bg: "#eef2ff", color: "#2563eb" }; // Default blue if no template
+
+                    return (
+                      <div style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "6px 12px",
+                        background: bg,
+                        borderRadius: "6px",
+                      }}>
+                        <svg width="14" height="14" fill="none" stroke={color} viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                        </svg>
+                        <Text as="span" variant="bodySm" fontWeight="medium" tone="base">
+                          <span style={{ color }}>Delivery: {rule.deliveryTime}</span>
+                        </Text>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -672,15 +682,20 @@ export default function DeliveryRules() {
                     info: "📦"
                   };
                   const prefix = toneLabels[t.toneDefault] || "📋";
+                  const isPro = t.isPro;
+                  const isFree = storePlan === "free";
+                  const isLocked = isPro && isFree;
+
                   return {
-                    label: `${prefix} ${t.name}`,
-                    value: t.templateId
+                    label: `${prefix} ${t.name}${isPro ? " 🔒 PRO" : ""}`,
+                    value: t.templateId,
+                    disabled: isLocked
                   };
                 })
               ]}
               value={formData.templateId}
               onChange={(value) => setFormData({ ...formData, templateId: value })}
-              helpText="Choose which message template to use for this delivery rule"
+              helpText={storePlan === "free" ? "🔒 Upgrade to PRO to unlock premium templates" : "Choose which message template to use for this delivery rule"}
             />
           </FormLayout>
         </Modal.Section>
@@ -828,15 +843,20 @@ export default function DeliveryRules() {
                     info: "📦"
                   };
                   const prefix = toneLabels[t.toneDefault] || "📋";
+                  const isPro = t.isPro;
+                  const isFree = storePlan === "free";
+                  const isLocked = isPro && isFree;
+
                   return {
-                    label: `${prefix} ${t.name}`,
-                    value: t.templateId
+                    label: `${prefix} ${t.name}${isPro ? " 🔒 PRO" : ""}`,
+                    value: t.templateId,
+                    disabled: isLocked
                   };
                 })
               ]}
               value={formData.templateId}
               onChange={(value) => setFormData({ ...formData, templateId: value })}
-              helpText="Choose which message template to use for this delivery rule"
+              helpText={storePlan === "free" ? "🔒 Upgrade to PRO to unlock premium templates" : "Choose which message template to use for this delivery rule"}
             />
           </FormLayout>
         </Modal.Section>
