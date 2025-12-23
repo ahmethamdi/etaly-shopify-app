@@ -65,14 +65,49 @@ export class ETACalculator {
       return null;
     }
 
+    // Check for product-specific delivery days override
+    let minDays = matchedRule.minDays;
+    let maxDays = matchedRule.maxDays;
+    let processingDays = matchedRule.processingDays;
+
+    if (productId) {
+      const productTargeting = await db.productTargeting.findFirst({
+        where: {
+          storeId,
+          ruleId: matchedRule.id,
+          productId,
+          OR: [
+            { variantId: variantId || null },
+            { variantId: null },
+          ],
+        },
+        orderBy: [
+          { variantId: "desc" }, // Prioritize variant-specific over product-wide
+        ],
+      });
+
+      if (productTargeting) {
+        // Override with product-specific days if set
+        if (productTargeting.overrideMinDays !== null) {
+          minDays = productTargeting.overrideMinDays;
+        }
+        if (productTargeting.overrideMaxDays !== null) {
+          maxDays = productTargeting.overrideMaxDays;
+        }
+        if (productTargeting.overrideProcessingDays !== null) {
+          processingDays = productTargeting.overrideProcessingDays;
+        }
+      }
+    }
+
     // Get settings
     const settings = await db.settings.findUnique({
       where: { storeId },
     });
 
-    // Calculate dates
+    // Calculate dates with potentially overridden values
     const result = await this.calculateDates({
-      rule: matchedRule,
+      rule: { ...matchedRule, minDays, maxDays, processingDays },
       storeId,
       orderDate,
       excludeWeekends: matchedRule.excludeWeekends,

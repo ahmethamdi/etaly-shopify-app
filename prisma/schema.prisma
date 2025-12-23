@@ -58,6 +58,7 @@ model Store {
   analytics         Analytics[]
   cartCheckoutSettings CartCheckoutSettings?
   messageTemplates  MessageTemplate[]
+  productTargeting  ProductTargeting[]
 }
 
 // App settings per store
@@ -129,10 +130,37 @@ model DeliveryRule {
   messageColor      String?
   messageBgColor    String?
 
+  // Relations
+  productTargeting  ProductTargeting[]
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@index([storeId, isActive])
+}
+
+// Product-specific delivery settings
+model ProductTargeting {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ruleId            String
+  rule              DeliveryRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  // Product identification
+  productId         String   // Shopify product ID
+  variantId         String?  // Optional: specific variant
+
+  // Override delivery days (optional - if not set, use rule defaults)
+  overrideMinDays   Int?
+  overrideMaxDays   Int?
+  overrideProcessingDays Int?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([ruleId, productId, variantId])
+  @@index([storeId, productId])
 }
 
 // Holidays and excluded dates
