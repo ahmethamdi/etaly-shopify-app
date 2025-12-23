@@ -415,6 +415,27 @@ export default function DeliveryRules() {
                   </svg>
                 </button>
 
+                {/* Product Targeting Button */}
+                <a
+                  href={`/app/delivery-rules/${rule.id}/products`}
+                  style={{
+                    padding: "8px 12px",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#2563eb",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    textDecoration: "none",
+                  }}
+                  title="Product-specific delivery days"
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ strokeWidth: "2" }}>
+                    <path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/>
+                  </svg>
+                </a>
+
                 {/* Delete Button */}
                 <button
                   onClick={() => handleDelete(rule.id)}
