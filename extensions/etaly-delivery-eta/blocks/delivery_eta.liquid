@@ -129,9 +129,20 @@
   left: -200%;
   width: 200%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.15), transparent);
   animation: etaly-shimmer 4s infinite;
   pointer-events: none;
+}
+
+.etaly-style-info .etaly-eta-content::before {
+  background: linear-gradient(90deg, transparent, rgba(100, 116, 139, 0.08), transparent);
+}
+
+.etaly-style-success .etaly-eta-content::before {
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.08), transparent);
+}
+
+.etaly-style-warning .etaly-eta-content::before {
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.08), transparent);
 }
 
 .etaly-eta-icon {
@@ -166,9 +177,8 @@
 .etaly-eta-text {
   font-weight: 600;
   font-size: 15px;
-  letter-spacing: 0.3px;
+  letter-spacing: -0.01em;
   line-height: 1.5;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .etaly-cutoff-timer {
@@ -190,33 +200,63 @@
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
 }
 
-/* UNIFIED MODERN STYLE - All themes use same premium black design */
-.etaly-style-info .etaly-eta-content,
-.etaly-style-success .etaly-eta-content,
+/* MODERN MINIMALIST STYLES - Color-coded with subtle elegance */
+
+/* INFO STYLE - Slate Blue */
+.etaly-style-info .etaly-eta-content {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(100, 116, 139, 0.2);
+  color: #334155;
+  box-shadow: 0 4px 16px rgba(51, 65, 85, 0.08);
+}
+
+.etaly-style-info .etaly-eta-icon {
+  background: rgba(148, 163, 184, 0.15);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.etaly-style-info .etaly-eta-icon svg {
+  stroke: #64748b;
+}
+
+/* SUCCESS STYLE - Minimal Green */
+.etaly-style-success .etaly-eta-content {
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.98) 0%, rgba(220, 252, 231, 0.98) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(34, 197, 94, 0.2);
+  color: #166534;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.08);
+}
+
+.etaly-style-success .etaly-eta-icon {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.etaly-style-success .etaly-eta-icon svg {
+  stroke: #22c55e;
+}
+
+/* WARNING STYLE - Minimal Amber */
 .etaly-style-warning .etaly-eta-content {
-  background: linear-gradient(135deg, rgba(17, 24, 39, 0.97) 0%, rgba(31, 41, 55, 0.97) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3),
-              0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-              0 0 20px rgba(139, 92, 246, 0.1);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.98) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(245, 158, 11, 0.2);
+  color: #92400e;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.08);
 }
 
-.etaly-style-info .etaly-eta-icon,
-.etaly-style-success .etaly-eta-icon,
 .etaly-style-warning .etaly-eta-icon {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(109, 40, 217, 0.2) 100%);
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
-.etaly-style-info .etaly-eta-icon svg,
-.etaly-style-success .etaly-eta-icon svg,
 .etaly-style-warning .etaly-eta-icon svg {
-  stroke: #a78bfa;
-  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.5));
+  stroke: #f59e0b;
 }
 
 @media (max-width: 768px) {
