@@ -17,13 +17,18 @@ api_version = "2025-01"
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
-  # NOTE: GDPR Compliance Webhooks
-  # These are NOT registered in shopify.app.toml
-  # Shopify automatically detects them if the endpoints exist and respond correctly:
-  #   - /webhooks/customers/data_request
-  #   - /webhooks/customers/redact
-  #   - /webhooks/shop/redact
-  # The endpoints are implemented and will be automatically validated by Shopify during app review
+  # GDPR Compliance Webhooks (Mandatory for App Store)
+  [[webhooks.subscriptions]]
+  topics = ["customers/data_request"]
+  uri = "/webhooks/customers/data_request"
+
+  [[webhooks.subscriptions]]
+  topics = ["customers/redact"]
+  uri = "/webhooks/customers/redact"
+
+  [[webhooks.subscriptions]]
+  topics = ["shop/redact"]
+  uri = "/webhooks/shop/redact"
 
   # Webhooks disabled temporarily - will be enabled after server update
   # [[webhooks.subscriptions]]
