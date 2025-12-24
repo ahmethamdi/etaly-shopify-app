@@ -101,33 +101,33 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 ## Webhook Configuration
 
+### ⚠️ IMPORTANT: GDPR Webhooks Cannot Be Registered via CLI
+
+**GDPR compliance webhooks MUST be added manually via Shopify Partner Dashboard.**
+
+They cannot be registered in `shopify.app.toml` because they use a different registration system.
+
 ### File: `shopify.app.toml`
 
 ```toml
 [webhooks]
-api_version = "2025-10"
+api_version = "2025-01"
 
   # App Lifecycle
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
-  # GDPR Compliance (MANDATORY)
-  [[webhooks.subscriptions]]
-  topics = [ "customers/data_request" ]
-  uri = "/webhooks/customers/data_request"
-  compliance_topics = [ "customers/data_request" ]
-
-  [[webhooks.subscriptions]]
-  topics = [ "customers/redact" ]
-  uri = "/webhooks/customers/redact"
-  compliance_topics = [ "customers/redact" ]
-
-  [[webhooks.subscriptions]]
-  topics = [ "shop/redact" ]
-  uri = "/webhooks/shop/redact"
-  compliance_topics = [ "shop/redact" ]
+  # NOTE: GDPR webhooks added manually via Partner Dashboard
 ```
+
+### Manual Registration Required
+
+Go to Shopify Partner Dashboard → Your App → Configuration → Webhooks and add:
+
+1. **customers/data_request** → `https://etaly.app/webhooks/customers/data_request`
+2. **customers/redact** → `https://etaly.app/webhooks/customers/redact`
+3. **shop/redact** → `https://etaly.app/webhooks/shop/redact`
 
 ### Webhook URLs (Production)
 
