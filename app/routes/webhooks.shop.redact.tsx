@@ -44,31 +44,55 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
     console.log(`[GDPR] Deleted analytics events for ${shop}`);
 
-    // 2. Delete delivery rules
+    // 2. Delete analytics (legacy)
+    await db.analytics.deleteMany({
+      where: { storeId: store.id },
+    });
+    console.log(`[GDPR] Deleted analytics for ${shop}`);
+
+    // 3. Delete product targeting
+    await db.productTargeting.deleteMany({
+      where: { storeId: store.id },
+    });
+    console.log(`[GDPR] Deleted product targeting for ${shop}`);
+
+    // 4. Delete delivery rules
     await db.deliveryRule.deleteMany({
       where: { storeId: store.id },
     });
     console.log(`[GDPR] Deleted delivery rules for ${shop}`);
 
-    // 3. Delete holidays
+    // 5. Delete message templates (custom only)
+    await db.messageTemplate.deleteMany({
+      where: { storeId: store.id, isBuiltIn: false },
+    });
+    console.log(`[GDPR] Deleted custom message templates for ${shop}`);
+
+    // 6. Delete holidays
     await db.holiday.deleteMany({
       where: { storeId: store.id },
     });
     console.log(`[GDPR] Deleted holidays for ${shop}`);
 
-    // 4. Delete settings
+    // 7. Delete cart/checkout settings
+    await db.cartCheckoutSettings.deleteMany({
+      where: { storeId: store.id },
+    });
+    console.log(`[GDPR] Deleted cart/checkout settings for ${shop}`);
+
+    // 8. Delete settings
     await db.settings.deleteMany({
       where: { storeId: store.id },
     });
     console.log(`[GDPR] Deleted settings for ${shop}`);
 
-    // 5. Delete sessions
+    // 9. Delete sessions
     await db.session.deleteMany({
       where: { shop },
     });
     console.log(`[GDPR] Deleted sessions for ${shop}`);
 
-    // 6. Finally, delete the store record
+    // 10. Finally, delete the store record
     await db.store.delete({
       where: { id: store.id },
     });
