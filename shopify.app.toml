@@ -17,18 +17,12 @@ api_version = "2025-01"
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
-  # GDPR Compliance Webhooks (Mandatory for App Store)
-  [[webhooks.subscriptions]]
-  topics = ["customers/data_request"]
-  uri = "/webhooks/customers/data_request"
-
-  [[webhooks.subscriptions]]
-  topics = ["customers/redact"]
-  uri = "/webhooks/customers/redact"
-
-  [[webhooks.subscriptions]]
-  topics = ["shop/redact"]
-  uri = "/webhooks/shop/redact"
+  # GDPR Compliance Webhooks MUST be added manually via Partner Dashboard
+  # Go to: https://partners.shopify.com → Apps → ETAly → App setup → Data protection
+  # Add these URLs:
+  # - Customer data request: https://etaly.app/webhooks/customers/data_request
+  # - Customer data erasure: https://etaly.app/webhooks/customers/redact
+  # - Shop data erasure: https://etaly.app/webhooks/shop/redact
 
   # Webhooks disabled temporarily - will be enabled after server update
   # [[webhooks.subscriptions]]
