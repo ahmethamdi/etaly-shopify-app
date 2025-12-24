@@ -7,7 +7,7 @@ embedded = true
 
 [app_proxy]
 url = "https://etaly.app"
-subpath = "apps/etaly"
+subpath = "etaly"
 prefix = "apps"
 
 [webhooks]
