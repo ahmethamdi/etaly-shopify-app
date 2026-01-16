@@ -210,10 +210,13 @@ export default function Index() {
             color: "white"
           }}>
             <div style={{ fontSize: "18px", marginBottom: "16px", opacity: 0.9 }}>
-              Preview Coming Soon
+              🚚 Example Delivery Estimate
             </div>
-            <div style={{ fontSize: "32px", fontWeight: "700" }}>
-              ETAly Dashboard
+            <div style={{ fontSize: "32px", fontWeight: "700", marginBottom: "8px" }}>
+              Arrives Jan 20 - Jan 23
+            </div>
+            <div style={{ fontSize: "16px", opacity: 0.8 }}>
+              Order within 2h 15m for same-day processing
             </div>
           </div>
         </div>

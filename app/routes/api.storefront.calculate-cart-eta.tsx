@@ -104,6 +104,24 @@ async function calculateItemETA(
   countryCode: string,
   store: any
 ) {
+  // Check if product is excluded from ETA display
+  if (store.settings?.excludedProducts) {
+    try {
+      const excludedProductIds = JSON.parse(store.settings.excludedProducts) as string[];
+      const isExcluded = excludedProductIds.some(excludedId => {
+        const excludedNumericId = excludedId.replace(/^gid:\/\/shopify\/Product\//, '');
+        const productNumericId = productId.replace(/^gid:\/\/shopify\/Product\//, '');
+        return excludedNumericId === productNumericId || excludedId === productId;
+      });
+
+      if (isExcluded) {
+        return null; // Product is excluded, don't show ETA
+      }
+    } catch (e) {
+      console.error('Error parsing excludedProducts:', e);
+    }
+  }
+
   // Find matching delivery rule
   const matchingRule = store.deliveryRules.find((rule: any) => {
     const countries = JSON.parse(rule.countries || "[]");

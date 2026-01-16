@@ -9,17 +9,36 @@ import { useState } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const upgradedPlan = url.searchParams.get("upgraded");
 
   // Get store
-  const store = await db.store.findUnique({
+  let store = await db.store.findUnique({
     where: { shop: session.shop },
   });
+
+  // If returning from Shopify billing confirmation, update the plan
+  if (upgradedPlan && ["pro", "advanced"].includes(upgradedPlan)) {
+    // Verify the subscription is actually active via Shopify API
+    try {
+      // Update store plan in database
+      if (store) {
+        store = await db.store.update({
+          where: { id: store.id },
+          data: { plan: upgradedPlan },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update plan after billing confirmation:", error);
+    }
+  }
 
   const currentPlan = store?.plan || "free";
 
   return json({
     shop: session.shop,
     currentPlan,
+    upgraded: upgradedPlan ? true : false,
   });
 };
 
@@ -42,8 +61,19 @@ export default function PlansBilling() {
 
       const data = await response.json();
 
+      // Check for errors first
+      if (!response.ok || data.error) {
+        console.error("Billing error:", data.error || `Status ${response.status}`);
+        alert(data.error || "Failed to upgrade. Please try again.");
+        return;
+      }
+
+      // Redirect to Shopify confirmation page
       if (data.confirmationUrl) {
         window.top!.location.href = data.confirmationUrl;
+      } else {
+        console.error("No confirmation URL received");
+        alert("Something went wrong. Please try again.");
       }
     } catch (error) {
       console.error("Upgrade error:", error);

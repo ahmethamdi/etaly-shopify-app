@@ -40,34 +40,47 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     }
 
-    // If no sessionId found, we can't attribute this conversion
-    if (!sessionId) {
-      console.log("No sessionId found in order, skipping conversion tracking");
-      return new Response("OK", { status: 200 });
+    // Also check cart attributes
+    if (!sessionId && order.cart_token) {
+      // Generate a session ID from cart token if no explicit session ID
+      sessionId = `cart_${order.cart_token}`;
     }
 
-    // Get the most recent impression/click event for this session to get productId and ruleId
-    const recentEvent = await db.analytics.findFirst({
-      where: {
-        storeId: store.id,
-        sessionId,
-        eventType: { in: ["impression", "click"] },
-      },
-      orderBy: {
-        timestamp: "desc",
-      },
-    });
+    // Get the most recent impression/click event for this session (if sessionId exists)
+    let recentEvent = null;
+    if (sessionId) {
+      recentEvent = await db.analytics.findFirst({
+        where: {
+          storeId: store.id,
+          sessionId,
+          eventType: { in: ["impression", "click"] },
+        },
+        orderBy: {
+          timestamp: "desc",
+        },
+      });
+    }
 
-    // Create conversion event
+    // Extract product info from order line items for better tracking
+    const firstLineItem = order.line_items?.[0];
+    const productId = firstLineItem?.product_id?.toString() || recentEvent?.productId;
+    const variantId = firstLineItem?.variant_id?.toString() || recentEvent?.variantId;
+
+    // Get country code from shipping address
+    const countryCode = order.shipping_address?.country_code ||
+                        order.billing_address?.country_code ||
+                        recentEvent?.countryCode;
+
+    // Create conversion event - always track orders even without session attribution
     await db.analytics.create({
       data: {
         storeId: store.id,
         eventType: "conversion",
-        sessionId,
+        sessionId: sessionId || `order_${orderId}`, // Use order ID as fallback session
         ruleId: recentEvent?.ruleId,
-        productId: recentEvent?.productId,
-        variantId: recentEvent?.variantId,
-        countryCode: recentEvent?.countryCode,
+        productId,
+        variantId,
+        countryCode,
         pageType: "checkout",
         orderId,
         orderValue,
@@ -75,7 +88,7 @@ export async function action({ request }: ActionFunctionArgs) {
       },
     });
 
-    console.log(`Conversion tracked for order ${orderId}, sessionId: ${sessionId}`);
+    console.log(`Conversion tracked for order ${orderId}, sessionId: ${sessionId || 'unattributed'}`);
 
     return new Response("OK", { status: 200 });
   } catch (error) {

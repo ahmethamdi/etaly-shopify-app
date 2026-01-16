@@ -115,8 +115,8 @@ export default function MessageTemplates() {
 
   const handleApplyTemplate = (templateId: string, isPro: boolean) => {
     if (isPro && !isProPlan) {
-      // TODO: Create plans page
-      alert("This template requires a Pro plan. Upgrade feature coming soon!");
+      // Redirect to plans page
+      window.location.href = "/app/plans-billing";
       return;
     }
 
@@ -509,7 +509,7 @@ export default function MessageTemplates() {
             </Text>
             <div style={{ display: "flex", gap: "16px" }}>
               <button
-                onClick={() => alert("Pro plan upgrade coming soon!")}
+                onClick={() => window.location.href = "/app/plans-billing"}
                 style={{
                   padding: "14px 32px",
                   background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
@@ -535,7 +535,7 @@ export default function MessageTemplates() {
                 Upgrade to Pro →
               </button>
               <button
-                onClick={() => alert("Documentation coming soon!")}
+                onClick={() => window.location.href = "/app/documentation"}
                 style={{
                   padding: "14px 32px",
                   background: "transparent",
@@ -621,7 +621,14 @@ export default function MessageTemplates() {
           </span>
         </Text>
         <button
-          onClick={() => alert("Custom template creation coming soon!")}
+          onClick={() => {
+            if (!isProPlan) {
+              window.location.href = "/app/plans-billing";
+            } else {
+              // Pro users can create custom templates
+              window.location.href = "/app/message-templates/new";
+            }
+          }}
           style={{
             padding: "14px 32px",
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -644,7 +651,7 @@ export default function MessageTemplates() {
             e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.3)";
           }}
         >
-          + Create Custom Template
+          {isProPlan ? "+ Create Custom Template" : "Upgrade to Pro for Custom Templates"}
         </button>
       </div>
 

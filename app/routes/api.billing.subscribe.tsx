@@ -5,7 +5,7 @@ import db from "../db.server";
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
-    const { session, admin, billing } = await authenticate.admin(request);
+    const { session, admin } = await authenticate.admin(request);
 
     const formData = await request.formData();
     const plan = formData.get("plan") as string;
@@ -40,76 +40,82 @@ export async function action({ request }: ActionFunctionArgs) {
     const selectedPlan = planDetails[plan as keyof typeof planDetails];
 
     // Create subscription using Shopify Billing API
-    const billingCheck = await billing.require({
-      plans: [selectedPlan.name],
-      onFailure: async () => {
-        // Create new subscription
-        const response = await admin.graphql(
-          `#graphql
-          mutation AppSubscriptionCreate($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!, $trialDays: Int, $test: Boolean) {
-            appSubscriptionCreate(
-              name: $name
-              lineItems: $lineItems
-              returnUrl: $returnUrl
-              trialDays: $trialDays
-              test: $test
-            ) {
-              appSubscription {
-                id
-                status
-              }
-              confirmationUrl
-              userErrors {
-                field
-                message
-              }
-            }
-          }`,
-          {
-            variables: {
-              name: selectedPlan.name,
-              lineItems: [
-                {
-                  plan: {
-                    appRecurringPricingDetails: {
-                      price: { amount: selectedPlan.amount, currencyCode: "EUR" },
-                      interval: "EVERY_30_DAYS",
-                    },
-                  },
-                },
-              ],
-              returnUrl: `https://${session.shop}/admin/apps/etaly/plans-billing?plan=${plan}`,
-              trialDays: selectedPlan.trialDays,
-              test: process.env.NODE_ENV === "development",
-            },
+    const response = await admin.graphql(
+      `#graphql
+      mutation AppSubscriptionCreate($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!, $trialDays: Int, $test: Boolean) {
+        appSubscriptionCreate(
+          name: $name
+          lineItems: $lineItems
+          returnUrl: $returnUrl
+          trialDays: $trialDays
+          test: $test
+        ) {
+          appSubscription {
+            id
+            status
           }
-        );
-
-        const responseJson = await response.json();
-        const result = responseJson?.data?.appSubscriptionCreate;
-
-        if (result?.userErrors?.length > 0) {
-          throw new Error(result.userErrors[0].message);
+          confirmationUrl
+          userErrors {
+            field
+            message
+          }
         }
+      }`,
+      {
+        variables: {
+          name: selectedPlan.name,
+          lineItems: [
+            {
+              plan: {
+                appRecurringPricingDetails: {
+                  price: { amount: selectedPlan.amount, currencyCode: "USD" },
+                  interval: "EVERY_30_DAYS",
+                },
+              },
+            },
+          ],
+          returnUrl: `https://${session.shop}/admin/apps/etaly/plans-billing?upgraded=${plan}`,
+          trialDays: selectedPlan.trialDays,
+          test: process.env.NODE_ENV !== "production",
+        },
+      }
+    );
 
-        return { confirmationUrl: result?.confirmationUrl };
-      },
-    });
+    const responseJson = await response.json();
 
-    // Update store plan in database
-    await db.store.update({
-      where: { id: store.id },
-      data: { plan },
-    });
-
-    // Return confirmation URL
-    if (billingCheck && typeof billingCheck === "object" && "confirmationUrl" in billingCheck) {
-      return json({ confirmationUrl: billingCheck.confirmationUrl });
+    // Check for GraphQL errors
+    if (responseJson.errors && responseJson.errors.length > 0) {
+      console.error("GraphQL errors:", responseJson.errors);
+      return json({
+        error: responseJson.errors[0].message || "GraphQL error occurred"
+      }, { status: 400 });
     }
 
-    return json({ success: true });
+    const result = responseJson?.data?.appSubscriptionCreate;
+
+    // Check for user errors
+    if (result?.userErrors?.length > 0) {
+      console.error("User errors:", result.userErrors);
+      return json({
+        error: result.userErrors[0].message || "Subscription error"
+      }, { status: 400 });
+    }
+
+    // Check if we got a confirmation URL
+    if (!result?.confirmationUrl) {
+      console.error("No confirmation URL returned:", responseJson);
+      return json({
+        error: "Failed to get confirmation URL"
+      }, { status: 500 });
+    }
+
+    // Return confirmation URL - database will be updated after merchant confirms
+    return json({ confirmationUrl: result.confirmationUrl });
+
   } catch (error) {
     console.error("Billing subscription error:", error);
-    return json({ error: "Failed to create subscription" }, { status: 500 });
+    return json({
+      error: error instanceof Error ? error.message : "Failed to create subscription"
+    }, { status: 500 });
   }
 }

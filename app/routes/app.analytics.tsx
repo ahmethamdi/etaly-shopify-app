@@ -604,47 +604,6 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Advanced Analytics Banner */}
-      <div
-        style={{
-          background: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          border: "1px solid #e5e7eb",
-          display: "flex",
-          gap: "24px",
-          alignItems: "center",
-        }}
-      >
-        <div
-          style={{
-            width: "64px",
-            height: "64px",
-            borderRadius: "12px",
-            background: "#2563eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2" />
-            <line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2" />
-            <line x1="3" y1="10" x2="21" y2="10" stroke="white" strokeWidth="2" />
-          </svg>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Text as="h2" variant="headingMd" fontWeight="semibold">
-            <span style={{ display: "block", marginBottom: "8px" }}>Advanced Analytics Coming Soon</span>
-          </Text>
-          <Text as="p" variant="bodySm" tone="subdued">
-            Get deeper insights with A/B testing, heatmaps, customer segments, and more detailed conversion tracking.
-          </Text>
-        </div>
-        <Button variant="primary">Join Waitlist</Button>
-      </div>
     </div>
   );
 }

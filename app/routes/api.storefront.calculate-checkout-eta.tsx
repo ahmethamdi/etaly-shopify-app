@@ -54,6 +54,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     }
 
+    // Filter out excluded products from items
+    let filteredItems = items;
+    if (store.settings?.excludedProducts) {
+      try {
+        const excludedProductIds = JSON.parse(store.settings.excludedProducts) as string[];
+        filteredItems = items.filter((item: any) => {
+          const isExcluded = excludedProductIds.some(excludedId => {
+            const excludedNumericId = excludedId.replace(/^gid:\/\/shopify\/Product\//, '');
+            const productNumericId = (item.productId || '').replace(/^gid:\/\/shopify\/Product\//, '');
+            return excludedNumericId === productNumericId || excludedId === item.productId;
+          });
+          return !isExcluded;
+        });
+      } catch (e) {
+        console.error('Error parsing excludedProducts:', e);
+      }
+    }
+
+    // If all items are excluded, don't show ETA
+    if (filteredItems.length === 0) {
+      return json({
+        success: false,
+        error: "No eligible items for ETA",
+      });
+    }
+
     // Find best matching delivery rule
     const matchingRule = findMatchingRule(
       store.deliveryRules,

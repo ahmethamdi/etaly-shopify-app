@@ -34,6 +34,44 @@ export class ETACalculator {
       orderDate = new Date(),
     } = params;
 
+    // Check if product is excluded from ETA display
+    if (productId) {
+      const settings = await db.settings.findUnique({
+        where: { storeId },
+        select: {
+          targetingMode: true,
+          excludedProducts: true,
+          targetTags: true
+        },
+      });
+
+      if (settings) {
+        // Check excluded products list
+        if (settings.excludedProducts) {
+          try {
+            const excludedProductIds = JSON.parse(settings.excludedProducts) as string[];
+            // Check both full GID and numeric ID formats
+            const isExcluded = excludedProductIds.some(excludedId => {
+              // Handle both "gid://shopify/Product/123" and "123" formats
+              const excludedNumericId = excludedId.replace(/^gid:\/\/shopify\/Product\//, '');
+              const productNumericId = productId.replace(/^gid:\/\/shopify\/Product\//, '');
+              return excludedNumericId === productNumericId || excludedId === productId;
+            });
+
+            if (isExcluded) {
+              return null; // Product is excluded, don't show ETA
+            }
+          } catch (e) {
+            console.error('Error parsing excludedProducts:', e);
+          }
+        }
+
+        // Check targeting mode - if "specific", product must have matching tags
+        // Note: Tag checking requires product data from Shopify, which we don't have here
+        // This would need to be passed from the storefront or fetched via API
+      }
+    }
+
     // Find applicable delivery rules
     const rules = await db.deliveryRule.findMany({
       where: {
@@ -100,11 +138,6 @@ export class ETACalculator {
         }
       }
     }
-
-    // Get settings
-    const settings = await db.settings.findUnique({
-      where: { storeId },
-    });
 
     // Get store's active template
     const store = await db.store.findUnique({

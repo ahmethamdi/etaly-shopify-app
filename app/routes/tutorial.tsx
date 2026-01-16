@@ -124,21 +124,6 @@ export default function Tutorial() {
           </p>
         </div>
 
-        {/* Video Placeholder */}
-        <div style={{ marginBottom: "60px", background: "white", borderRadius: "16px", padding: "48px", textAlign: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-          <div style={{ background: "#e5e7eb", borderRadius: "12px", padding: "120px 40px", marginBottom: "24px" }}>
-            <svg width="80" height="80" fill="none" stroke="#6b7280" viewBox="0 0 24 24" style={{ strokeWidth: "1.5", margin: "0 auto" }}>
-              <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p style={{ fontSize: "18px", color: "#6b7280", marginTop: "24px" }}>
-              Video tutorial coming soon
-            </p>
-          </div>
-          <p style={{ fontSize: "16px", color: "#6b7280" }}>
-            For now, follow the step-by-step guide below
-          </p>
-        </div>
 
         {/* Steps */}
         <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
