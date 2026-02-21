@@ -1,3 +1,4 @@
+import type { LoaderFunctionArgs } from "@remix-run/node";
 import {
   Links,
   Meta,
@@ -5,6 +6,13 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+import { addDocumentResponseHeaders } from "./shopify.server";
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const responseHeaders = new Headers();
+  addDocumentResponseHeaders(request, responseHeaders);
+  return new Response(null, { headers: responseHeaders });
+};
 
 export default function App() {
   return (
