@@ -20,9 +20,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: { shop: session.shop },
   });
 
-  const settings = await db.settings.findUnique({
-    where: { storeId: store?.id },
-  });
+  const settings = store?.id
+    ? await db.settings.findUnique({ where: { storeId: store.id } })
+    : null;
 
   const currentPlan = store?.plan || "free";
   const currentLanguage = settings?.defaultLanguage || "en";
