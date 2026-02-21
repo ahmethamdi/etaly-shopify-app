@@ -6,8 +6,13 @@ import ETACalculator from "../services/eta-calculator.server";
 // Public API endpoint for storefront (no authentication required)
 export async function action({ request }: ActionFunctionArgs) {
   try {
-    // Get shop from request headers, referer, or origin
+    // Get shop from request headers, query string (App Proxy), referer, or origin
     let shop = request.headers.get("X-Shop-Domain");
+
+    if (!shop) {
+      const requestUrl = new URL(request.url);
+      shop = requestUrl.searchParams.get("shop");
+    }
 
     if (!shop) {
       const referer = request.headers.get("Referer");
