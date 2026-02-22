@@ -436,7 +436,7 @@ export default function MessageTemplates() {
                   boxShadow: `0 4px 12px ${toneColors.color}15`,
                 }}
               >
-                <Icon source={getIconComponent(template.icon)} tone="base" />
+                {renderTemplateIcon(template.icon, 18)}
                 <Text as="span" variant="bodySm" fontWeight="medium">
                   <span style={{
                     color: toneColors.color,
