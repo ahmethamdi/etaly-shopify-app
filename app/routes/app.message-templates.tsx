@@ -1,20 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigation, useNavigate } from "@remix-run/react";
-import { Text, Button, Icon } from "@shopify/polaris";
-import {
-  DeliveryIcon,
-  PackageIcon,
-  ClockIcon,
-  PlanIcon,
-  ProductIcon,
-  CalendarIcon,
-  GlobeIcon,
-  StarFilledIcon
-} from "@shopify/polaris-icons";
+import { Text, Button } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { useState } from "react";
+import React, { useState } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -139,19 +129,90 @@ export default function MessageTemplates() {
     return toneColors[tone] || toneColors.info;
   };
 
-  // Helper function to get icon component
-  const getIconComponent = (iconName: string | null) => {
-    const iconMap: Record<string, any> = {
-      "🚀": DeliveryIcon,
-      "📦": PackageIcon,
-      "⏰": ClockIcon,
-      "✈️": PlanIcon,
-      "🎄": ProductIcon,
-      "📅": CalendarIcon,
-      "🌍": GlobeIcon,
-      "⚡": StarFilledIcon,
+  // Icon colors per template
+  const iconColors: Record<string, { bg: string; stroke: string }> = {
+    truck:    { bg: "#eff6ff", stroke: "#2563eb" },
+    bolt:     { bg: "#fef3c7", stroke: "#d97706" },
+    clock:    { bg: "#fff7ed", stroke: "#ea580c" },
+    smile:    { bg: "#f0fdf4", stroke: "#16a34a" },
+    calendar: { bg: "#f5f3ff", stroke: "#7c3aed" },
+    sparkle:  { bg: "#fdf2f8", stroke: "#db2777" },
+    sun:      { bg: "#fffbeb", stroke: "#d97706" },
+    gift:     { bg: "#fef2f2", stroke: "#dc2626" },
+    leaf:     { bg: "#f0fdf4", stroke: "#15803d" },
+  };
+
+  const renderTemplateIcon = (iconName: string | null, size = 22) => {
+    const name = iconName || "truck";
+    const c = iconColors[name] || { bg: "#eff6ff", stroke: "#2563eb" };
+    const s: React.CSSProperties = { width: size, height: size, strokeWidth: 2, flexShrink: 0 };
+    const icons: Record<string, React.ReactElement> = {
+      truck: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+          <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+      ),
+      bolt: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinejoin="round"/>
+        </svg>
+      ),
+      clock: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+        </svg>
+      ),
+      smile: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+      ),
+      calendar: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      ),
+      sparkle: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" strokeLinejoin="round"/>
+        </svg>
+      ),
+      sun: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      ),
+      gift: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <polyline points="20 12 20 22 4 22 4 12"/>
+          <rect x="2" y="7" width="20" height="5"/>
+          <line x1="12" y1="22" x2="12" y2="7"/>
+          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+        </svg>
+      ),
+      leaf: (
+        <svg fill="none" stroke={c.stroke} viewBox="0 0 24 24" style={s}>
+          <path d="M17 8C8 10 5.9 16.17 3.82 19.5c1.83.95 3.95 1.55 6.18 1.5 7 0 11-5.86 11-14 0 0-4 1-4-5 0 0-3.14 7-13 9"/>
+        </svg>
+      ),
     };
-    return iconMap[iconName || ""] || PackageIcon;
+    return (
+      <div style={{
+        width: size + 18, height: size + 18, borderRadius: "10px",
+        background: c.bg, display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        {icons[name] || icons.truck}
+      </div>
+    );
   };
 
   return (
@@ -332,22 +393,8 @@ export default function MessageTemplates() {
               )}
 
               {/* Icon */}
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "16px",
-                  background: `linear-gradient(135deg, ${toneColors.bg} 0%, ${toneColors.color}22 100%)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "20px",
-                  marginTop: template.isPro || isSelected ? "32px" : "0",
-                  boxShadow: `0 8px 16px ${toneColors.color}20`,
-                  border: `2px solid ${toneColors.color}30`,
-                }}
-              >
-                <Icon source={getIconComponent(template.icon)} tone="base" />
+              <div style={{ marginBottom: "20px", marginTop: template.isPro || isSelected ? "32px" : "0" }}>
+                {renderTemplateIcon(template.icon, 28)}
               </div>
 
               {/* Title & Description */}
