@@ -346,11 +346,14 @@ export default function Settings() {
               cursor: "pointer",
             }}
           >
-            <option>English</option>
-            <option>Deutsch</option>
-            <option>Français</option>
-            <option>Español</option>
-            <option>Italiano</option>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+            <option value="it">Italiano</option>
+            <option value="tr">Türkçe</option>
+            <option value="nl">Nederlands</option>
+            <option value="pt">Português</option>
           </select>
           <Text as="p" variant="bodySm" tone="subdued">
             <span style={{ display: "block", marginTop: "8px" }}>
