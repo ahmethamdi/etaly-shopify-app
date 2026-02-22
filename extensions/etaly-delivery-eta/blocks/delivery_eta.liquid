@@ -413,7 +413,7 @@
       return Shopify.Checkout.country;
     }
     try {
-      const response = await fetch('/api/storefront/detect-country');
+      const response = await fetch('/apps/etaly/api/storefront/detect-country');
       const data = await response.json();
       return data.countryCode || 'US';
     } catch (error) {
@@ -455,7 +455,7 @@
     trackData.append('countryCode', countryCode);
     trackData.append('pageType', 'product');
 
-    fetch('/api/storefront/track', {
+    fetch('/apps/etaly/api/storefront/track', {
       method: 'POST',
       body: trackData,
       headers: {
@@ -476,7 +476,7 @@
     trackData.append('countryCode', countryCode);
     trackData.append('pageType', 'product');
 
-    fetch('/api/storefront/track', {
+    fetch('/apps/etaly/api/storefront/track', {
       method: 'POST',
       body: trackData,
       headers: {

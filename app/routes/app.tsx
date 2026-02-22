@@ -27,15 +27,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const currentPlan = store?.plan || "free";
   const currentLanguage = settings?.defaultLanguage || "en";
 
+  const url = new URL(request.url);
+  const host = url.searchParams.get("host") || "";
+
   return json({
     apiKey: process.env.SHOPIFY_API_KEY || "",
+    host,
     currentPlan,
     currentLanguage,
   });
 };
 
 export default function App() {
-  const { apiKey, currentPlan, currentLanguage } = useLoaderData<typeof loader>();
+  const { apiKey, host, currentPlan, currentLanguage } = useLoaderData<typeof loader>();
   const location = useLocation();
 
   // Translation helper
@@ -132,7 +136,7 @@ export default function App() {
   };
 
   return (
-    <AppProvider isEmbeddedApp={true} apiKey={apiKey}>
+    <AppProvider isEmbeddedApp={true} apiKey={apiKey} host={host}>
       <div style={{ display: "flex", height: "100vh" }}>
         {/* Custom Sidebar */}
         <div

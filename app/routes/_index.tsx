@@ -8,11 +8,16 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
 
-  // If there's a shop parameter, this is an installation attempt
-  if (url.searchParams.has("shop")) {
+  // If there's a shop parameter or embedded app context, authenticate and redirect preserving params
+  if (url.searchParams.has("shop") || url.searchParams.has("embedded") || url.searchParams.has("id_token")) {
     try {
       await authenticate.admin(request);
-      return redirect("/app");
+      // Preserve all query params when redirecting to /app
+      const appUrl = new URL("/app", url.origin);
+      url.searchParams.forEach((value, key) => {
+        appUrl.searchParams.set(key, value);
+      });
+      return redirect(appUrl.toString());
     } catch (error) {
       throw error;
     }
