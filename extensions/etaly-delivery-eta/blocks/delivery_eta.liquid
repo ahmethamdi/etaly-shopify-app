@@ -359,6 +359,9 @@
     formData.append('productId', params.productId);
     formData.append('variantId', params.variantId);
     formData.append('countryCode', params.countryCode);
+    // Send browser language (e.g. "tr", "de") so API returns localized dates
+    const browserLang = (navigator.language || 'en').split('-')[0];
+    formData.append('lang', browserLang);
 
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',

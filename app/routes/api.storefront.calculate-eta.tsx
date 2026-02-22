@@ -47,9 +47,10 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     }
 
-    // Find store
+    // Find store with settings
     const store = await db.store.findUnique({
       where: { shop },
+      include: { settings: true },
     });
 
     if (!store || !store.isActive) {
@@ -68,6 +69,9 @@ export async function action({ request }: ActionFunctionArgs) {
     const postalCode = formData.get("postalCode") as string | undefined;
     const productId = formData.get("productId") as string | undefined;
     const variantId = formData.get("variantId") as string | undefined;
+    // Language: widget browser lang takes priority, then store default
+    const widgetLang = formData.get("lang") as string | undefined;
+    const language = widgetLang || store.settings?.defaultLanguage || "en";
 
     if (!countryCode) {
       return json(
@@ -87,6 +91,7 @@ export async function action({ request }: ActionFunctionArgs) {
       productId,
       variantId,
       orderDate: new Date(),
+      language,
     });
 
     if (!result) {

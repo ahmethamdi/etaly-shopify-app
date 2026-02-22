@@ -1,5 +1,22 @@
 import db from "../db.server";
 
+// Translation strings for fallback messages and date formatting
+const translations: Record<string, {
+  delivery: string;
+  businessDay: string;
+  businessDays: string;
+  locale: string;
+}> = {
+  en: { delivery: "Delivery in",     businessDay: "business day",  businessDays: "business days", locale: "en-US" },
+  de: { delivery: "Lieferung in",    businessDay: "Werktag",       businessDays: "Werktagen",     locale: "de-DE" },
+  fr: { delivery: "Livraison en",    businessDay: "jour ouvré",    businessDays: "jours ouvrés",  locale: "fr-FR" },
+  es: { delivery: "Entrega en",      businessDay: "día hábil",     businessDays: "días hábiles",  locale: "es-ES" },
+  it: { delivery: "Consegna in",     businessDay: "giorno lavorativo", businessDays: "giorni lavorativi", locale: "it-IT" },
+  tr: { delivery: "Teslimat",        businessDay: "iş günü",       businessDays: "iş günü",       locale: "tr-TR" },
+  nl: { delivery: "Levering in",     businessDay: "werkdag",       businessDays: "werkdagen",     locale: "nl-NL" },
+  pt: { delivery: "Entrega em",      businessDay: "dia útil",      businessDays: "dias úteis",    locale: "pt-PT" },
+};
+
 interface CalculateETAParams {
   storeId: string;
   countryCode: string;
@@ -7,6 +24,7 @@ interface CalculateETAParams {
   productId?: string;
   variantId?: string;
   orderDate?: Date;
+  language?: string;
 }
 
 interface ETAResult {
@@ -32,6 +50,7 @@ export class ETACalculator {
       productId,
       variantId,
       orderDate = new Date(),
+      language = "en",
     } = params;
 
     // Check if product is excluded from ETA display
@@ -155,6 +174,7 @@ export class ETACalculator {
       excludeWeekends: matchedRule.excludeWeekends,
       excludeHolidays: matchedRule.excludeHolidays,
       activeTemplate: store?.activeTemplate || null,
+      language,
     });
 
     return {
@@ -175,8 +195,9 @@ export class ETACalculator {
     excludeWeekends: boolean;
     excludeHolidays: boolean;
     activeTemplate?: any;
+    language?: string;
   }): Promise<ETAResult> {
-    const { rule, storeId, orderDate, excludeWeekends, excludeHolidays, activeTemplate } = params;
+    const { rule, storeId, orderDate, excludeWeekends, excludeHolidays, activeTemplate, language = "en" } = params;
 
     // Get holidays if needed
     let holidays: Date[] = [];
@@ -203,7 +224,7 @@ export class ETACalculator {
     );
 
     // Generate message using active template if available
-    const message = this.generateMessage(rule, minDate, maxDate, activeTemplate);
+    const message = this.generateMessage(rule, minDate, maxDate, activeTemplate, language);
 
     return {
       minDate,
@@ -252,17 +273,17 @@ export class ETACalculator {
   /**
    * Generate ETA message
    */
-  private static generateMessage(rule: any, minDate: Date, maxDate: Date, activeTemplate?: any): string {
+  private static generateMessage(rule: any, minDate: Date, maxDate: Date, activeTemplate?: any, language = "en"): string {
     // Use active template message if available
     if (activeTemplate?.message) {
       let message = activeTemplate.message
-        .replace(/{eta_min_date}/g, this.formatDate(minDate))
-        .replace(/{eta_max_date}/g, this.formatDate(maxDate))
-        .replace(/{eta_date}/g, this.formatDate(maxDate)) // Single ETA date (uses max)
+        .replace(/{eta_min_date}/g, this.formatDate(minDate, language))
+        .replace(/{eta_max_date}/g, this.formatDate(maxDate, language))
+        .replace(/{eta_date}/g, this.formatDate(maxDate, language))
         .replace(/{eta_min}/g, rule.minDays.toString())
         .replace(/{eta_max}/g, rule.maxDays.toString())
-        .replace(/{minDate}/g, this.formatDate(minDate))
-        .replace(/{maxDate}/g, this.formatDate(maxDate))
+        .replace(/{minDate}/g, this.formatDate(minDate, language))
+        .replace(/{maxDate}/g, this.formatDate(maxDate, language))
         .replace(/{minDays}/g, rule.minDays.toString())
         .replace(/{maxDays}/g, rule.maxDays.toString());
 
@@ -303,30 +324,31 @@ export class ETACalculator {
     // Fallback to rule's custom template
     if (rule.messageTemplate) {
       return rule.messageTemplate
-        .replace("{minDate}", this.formatDate(minDate))
-        .replace("{maxDate}", this.formatDate(maxDate))
+        .replace("{minDate}", this.formatDate(minDate, language))
+        .replace("{maxDate}", this.formatDate(maxDate, language))
         .replace("{minDays}", rule.minDays.toString())
         .replace("{maxDays}", rule.maxDays.toString());
     }
 
-    // Default message
+    // Default message (translated)
+    const t = translations[language] || translations.en;
     if (rule.minDays === rule.maxDays) {
-      return `Delivery in ${rule.minDays} business day${rule.minDays > 1 ? "s" : ""}`;
+      return `${t.delivery} ${rule.minDays} ${rule.minDays > 1 ? t.businessDays : t.businessDay}`;
     }
-
-    return `Delivery in ${rule.minDays}-${rule.maxDays} business days`;
+    return `${t.delivery} ${rule.minDays}-${rule.maxDays} ${t.businessDays}`;
   }
 
   /**
    * Format date for display
    */
-  private static formatDate(date: Date): string {
+  private static formatDate(date: Date, language = "en"): string {
+    const t = translations[language] || translations.en;
     const options: Intl.DateTimeFormatOptions = {
       month: "short",
       day: "numeric",
       year: "numeric",
     };
-    return date.toLocaleDateString("en-US", options);
+    return date.toLocaleDateString(t.locale, options);
   }
 
   /**
