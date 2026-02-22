@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigation, useNavigate } from "@remix-run/react";
 import { Text, Button, Icon } from "@shopify/polaris";
 import {
   DeliveryIcon,
@@ -107,6 +107,7 @@ export default function MessageTemplates() {
   const { templates, activeTemplateId, userPlan } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
+  const navigate = useNavigate();
   const isLoading = navigation.state === "submitting";
 
   const [selectedTemplate, setSelectedTemplate] = useState(activeTemplateId);
@@ -116,7 +117,7 @@ export default function MessageTemplates() {
   const handleApplyTemplate = (templateId: string, isPro: boolean) => {
     if (isPro && !isProPlan) {
       // Redirect to plans page
-      window.location.href = "/app/plans-billing";
+      navigate("/app/plans-billing");
       return;
     }
 
@@ -509,7 +510,7 @@ export default function MessageTemplates() {
             </Text>
             <div style={{ display: "flex", gap: "16px" }}>
               <button
-                onClick={() => window.location.href = "/app/plans-billing"}
+                onClick={() => navigate("/app/plans-billing")}
                 style={{
                   padding: "14px 32px",
                   background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
@@ -535,7 +536,7 @@ export default function MessageTemplates() {
                 Upgrade to Pro →
               </button>
               <button
-                onClick={() => window.location.href = "/app/documentation"}
+                onClick={() => navigate("/app/documentation")}
                 style={{
                   padding: "14px 32px",
                   background: "transparent",
@@ -623,10 +624,10 @@ export default function MessageTemplates() {
         <button
           onClick={() => {
             if (!isProPlan) {
-              window.location.href = "/app/plans-billing";
+              navigate("/app/plans-billing");
             } else {
               // Pro users can create custom templates
-              window.location.href = "/app/message-templates/new";
+              navigate("/app/message-templates/new");
             }
           }}
           style={{
